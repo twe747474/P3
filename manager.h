@@ -20,7 +20,7 @@ struct neighborsAndCost
     int cost;
     int portNumber;
 };
-struct routesAndNeghbors{
+struct routesAndNeighbors{
     int home;
     int myPort;
     vector<neighborsAndCost> neighbors;
@@ -32,7 +32,7 @@ class manager
     int numberOfRouters;
     vector<int> routersSockets;
     fd_set readfds;
-    vector<routesAndNeghbors> topology;
+    vector<routesAndNeighbors> topology;
 
 
 public:
@@ -53,7 +53,7 @@ public:
         FD_SET(socket, &readfds);
         routersSockets.push_back(socket);
     }
-    void pushNeighbors(routesAndNeghbors r)
+    void pushNeighbors(routesAndNeighbors r)
     {
         topology.push_back(r);
     }
@@ -62,7 +62,7 @@ public:
         return topology.size();
     }
 
-    routesAndNeghbors& getTopolgy(int i)
+    routesAndNeighbors& getTopolgy(int i)
     {
         return topology.at(i);
     };
@@ -82,6 +82,9 @@ public:
 
 
 };
+void createTwoWay(manager &);
+void updateNeighborPorts(int,int , manager &);
 void digestMessage(std::string , int , manager &);
+routesAndNeighbors findNeighbors(int , manager &);
 int connectToRouter(int);
 #endif //P3_MANAGER_H
