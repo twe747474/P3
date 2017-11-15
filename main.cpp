@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include "sharedFunctions.h"
-
+#include <cstring>  //added for memset, strerror
 
 using namespace std;
 

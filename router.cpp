@@ -9,6 +9,8 @@
 #include <vector>
 #include "router.h"
 #include <unistd.h>
+#include <cstring>  //added for memset, strerror
+
 using std::endl;
 using std::cout;
 using std::string;

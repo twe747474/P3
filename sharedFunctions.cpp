@@ -1,6 +1,7 @@
 //
 // Created by Trevor  Encinias  on 11/13/17.
 //
+#include <cstring> //added for memset
 #include "sharedFunctions.h"
 using std::endl;
 std::ofstream getRecord(std::string file)
