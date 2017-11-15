@@ -18,7 +18,6 @@ void waitForAck(int sd , router &r)
     char buffer[1024];
     memset(buffer,0,1024);
     std::ofstream myFile = getRecord(r.getName());
-    cout<<"geting to incomingMessage "<<endl;
     if((valread = recv(sd,buffer,1024,0)) == 0)
     {
         myFile<<"shit wasnt sent"<<endl;

@@ -48,7 +48,7 @@ void openFileR(string &fileName , manager &m)
     vector<string> fileBroken;
     routes router;
     int previousNode = 0;
-    routesAndNeghbors ran;
+    routesAndNeighbors ran;
     neighborsAndCost nac;
     ran.home = 0;
     if(!inFile)
@@ -68,6 +68,13 @@ void openFileR(string &fileName , manager &m)
             else if(stoi(fileInfo) == -1)
             {
                 m.pushNeighbors(ran);
+                if(m.topologySize() != m.getNumberOfRoutes())
+                {
+                    ran.home+=1;
+                    ran.neighbors.clear();
+                    routesAndNeighbors test =  findNeighbors(ran.home, m);
+                    m.pushNeighbors(test);
+                }
                 break;
             }
             else
@@ -77,6 +84,10 @@ void openFileR(string &fileName , manager &m)
                 if(ran.home != firstNode)
                 {
                     m.pushNeighbors(ran);
+                    if(firstNode != ran.home+1)
+                    {
+                        m.pushNeighbors(findNeighbors(ran.home +1 , m));
+                    }
                     ran.neighbors.clear();
                     ran.home = firstNode;
                 }
@@ -88,7 +99,7 @@ void openFileR(string &fileName , manager &m)
             }
         }
     }
-
+    createTwoWay(m);
 }
 void spawnRouters(int processCount , manager &m)
 {
@@ -195,6 +206,7 @@ int connectToRouter(int port)
             //expecting port
             myFile<<sepMessage.at(1)<<endl;
             m.getTopolgy(router).myPort = stoi(sepMessage.at(1));
+            updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
         }
         else if(sepMessage.at(0) == "2")
         {
@@ -206,22 +218,86 @@ int connectToRouter(int port)
         }
 
     }
+    void updateNeighborPorts(int router , int port , manager &m ) {
+        for (neighborsAndCost i : m.getTopolgy(router).neighbors) {
+            int flag = false;
+            int t = i.neighbor;
+            for (neighborsAndCost &k : m.getTopolgy(i.neighbor).neighbors) {
+                if (k.neighbor == router) {
+                    k.portNumber = port;
+                    flag = true;
+                    break;
 
+                }
+
+            }
+        }
+    }
+   routesAndNeighbors findNeighbors(int router , manager &m)
+    {
+        neighborsAndCost nac1;
+        routesAndNeighbors r;
+        r.home = router;
+     for(int i = 0 ; i < m.topologySize();i++)
+     {
+         for(neighborsAndCost nac : m.getTopolgy(i).neighbors)
+         {
+             if(nac.neighbor == r.home)
+             {
+                 nac1.neighbor = m.getTopolgy(i).home;
+                 nac1.cost = nac.cost;
+                 r.neighbors.push_back(nac1);
+                 break;
+             }
+         }
+
+     }
+        return r;
+
+    }
+    void createTwoWay(manager &m)
+    {
+        for(int i = 0 ; i < m.topologySize() ; i++)
+        {
+            for(neighborsAndCost k : m.getTopolgy(i).neighbors)
+            {
+                bool flag = false;
+                for(neighborsAndCost tl : m.getTopolgy(k.neighbor).neighbors)
+                {
+                    if(i == tl.neighbor)
+                    {
+                        flag = true;
+                        break;
+                    }
+
+                }
+                if(flag != true)
+                {
+                 neighborsAndCost temp;
+                    temp.neighbor = i;
+                    temp.portNumber = m.getTopolgy(i).myPort;
+                    temp.cost = k.cost;
+                    m.getTopolgy(k.neighbor).neighbors.push_back(temp);
+                }
+            }
+
+        }
+    }
 int main(int argc, char** argv)
 {
     string file = argv[1];
     manager m;
     openFileR(file , m );
-    spawnRouters(2 , m);
+    spawnRouters(m.getNumberOfRoutes() , m);
     multiplex(m);
     for(int i = 0; i < m.topologySize();i++)
     {
-        routesAndNeghbors w = m.getTopolgy(i);
+        routesAndNeighbors w = m.getTopolgy(i);
         cout<<"Home:: "<<w.home<<endl;
         cout<<"MyPort:: "<<w.myPort<<endl;
         for(neighborsAndCost c: w.neighbors)
         {
-            cout<<"Neighbor:: "<<c.neighbor<<" "<<"Cost::  " <<c.cost<<endl;
+            cout<<"Neighbor:: "<<c.neighbor<<" "<<"Cost::  " <<c.cost<<" Port:: "<<c.portNumber<<endl;
         }
 
     }
