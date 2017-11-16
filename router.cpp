@@ -9,6 +9,10 @@
 #include <vector>
 #include "router.h"
 #include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 using std::endl;
 using std::cout;
 using std::string;
@@ -55,8 +59,9 @@ void createUDP(int portNumber , router &r)
         printf(" something went wrong with bind()! %s\n", strerror(errno));
 
     }
+    r.setSocket(sock);
     myFile<<"UDP created PortNumber: "<<udpPort<<"Socket:: "<<sock<<endl;
-    close(sock);
+    //close(sock);
 }
 
 void createConnection(int portNumber , router &r)
@@ -106,22 +111,22 @@ void createConnection(int portNumber , router &r)
         myFile<<"Sending request for a router number and port to manager"<<endl;
         string packet = "1|" + std::to_string(r.getUDPPort()) +"|0000";
         sendAll(clientSocketNumber,packet,r.getName());
-        WaitForNeighbors(clientSocketNumber, r);
-        close(socketfd);
-        close(clientSocketNumber);
+        r.setTCPsocket(clientSocketNumber);
+        Wait(clientSocketNumber, r);
         break;
     }
     //myFile<<"exiting"<<endl;
     //exit(0);
 
 }
-void digestMessage(std::string message, router &r)
+void digestMessage(std::string message, router &r , int sd)
 {
     std::vector<string> brokeUp;
     neighbor n;
     std::vector<string> brokePacket = splitString(message,'%');
     std::ofstream myFile = getRecord(r.getName());
     myFile<<"Packet:: "<<message<<endl;
+    //neighborhood is coming in.
     if(brokePacket.at(0) == "1")
     {
         brokePacket.erase(brokePacket.begin() + 0);
@@ -135,14 +140,74 @@ void digestMessage(std::string message, router &r)
             n.cost = stoi(brokeUp.at(2));
             r.addNeighbor(n);
         }
+        std::string message = "3|ready|" +r.getHome();
+        //allows manager to know they got the data.
+        sendAll(sd , message , r.getName());
+        for(neighbor n:r.getNeighbor())
+        {
+
+            myFile<<"------------------------"<<endl;
+            myFile<<"| Neighbor:: "<<n.address<<endl;
+            myFile<<"| Port:: "<<n.port<<endl;
+            myFile<<"| Cost:: "<<n.cost<<endl;
+            myFile<<"------------------------"<<endl;
+        }
+        //wait for next step from manager.
+        Wait(sd,r);
     }
-    else{
-        //to::do
+    //manager will tell router to go and listen for its neighbors.
+    else if(brokePacket.at(0) == "2")
+    {
+        string message ="3|Signed|"+r.getHome();
+        sendAll(sd , message, r.getName());
+        Wait(r.getTCPsocket() , r);
+
+    }
+     //check and connect.
+    else if(brokePacket.at(0) == "3")
+    {
+        string message ="3|Signed|"+r.getHome();
+        sendAll(sd , message, r.getName());
+    }
+     //hello message from router....
+    else if(brokePacket.at(0) == "4")
+    {
+
+    }
+     //hello back from neigbor
+    else if(brokePacket.at(0) == "5")
+    {
+
     }
 
 }
+void meetNeigbors(router &r)
+{
+    int tempSd;
+    struct sockaddr_in address , serv_addr;
+    socklen_t addr_size;
+    serv_addr.sin_family = AF_INET;
+    std::string packet;
+    for(neighbor &n :r.getNeighbor())
+    {
+        serv_addr.sin_port = htons(n.port);
+        if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) == -1)
+        {
+            cout << "\nInvalid address/ Address not supported \n" << endl;
 
-void WaitForNeighbors(int sd, router &r)
+        }
+        std::string packet = "3%hello%"+r.getName();
+//        if((tempSd = sendto(r.getUdpSocket(),packet.c_str(), strlen(packet), 0,(struct sockaddr *) &address,(int)sizeof(address))) != -1)
+//        {
+//            perror("sendto failed");
+//        }
+
+    }
+    Wait(r.getTCPsocket(),r);
+}
+
+//interchangable socket descriptor.
+void Wait(int sd, router &r)
 {
     int valread;
     char buffer[1024];
@@ -155,14 +220,7 @@ void WaitForNeighbors(int sd, router &r)
     }
     else
     {
-        digestMessage(buffer,r);
-        for(neighbor n:r.getNeighbor())
-        {
-            myFile<<"Neighbor:: "<<n.address<<endl;
-            myFile<<"Port:: "<<n.port<<endl;
-            myFile<<"Cost:: "<<n.cost<<endl;
-            myFile<<"------------------------"<<endl;
-        }
+        digestMessage(buffer,r,sd);
     }
 }
 

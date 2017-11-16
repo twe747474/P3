@@ -11,14 +11,29 @@ struct neighbor{
     int address;
     int port;
     int cost;
+    int socket;
 };
 class router{
     std::string name;
     int udpPort;
     std::vector<neighbor> myNeighbors;
     std::string home;
-
+    int udpSocket;
+    int tcpSocket;
+    int managerTCP;
 public:
+    void setTCPsocket(int sd)
+    {
+        tcpSocket = sd;
+    }
+    void setmanagerTCP(int sd)
+    {
+        managerTCP = sd;
+    }
+    void setSocket(int sd)
+    {
+        udpSocket = sd;
+    }
     void addNeighbor(neighbor n)
     {
         myNeighbors.push_back(n);
@@ -34,6 +49,18 @@ public:
     void setUDP(int r)
     {
         udpPort = r ;
+    }
+    int getManagerConnection()
+    {
+        return managerTCP;
+    }
+    int getTCPsocket()
+    {
+        return tcpSocket;
+    }
+    int getUdpSocket()
+    {
+        return udpSocket;
     }
     int getUDPPort()
     {
@@ -55,8 +82,10 @@ public:
     }
 
 };
-void digestMessage( std::string, router &);
+void openAndListen(router &);
+void meetNeigbors(router &);
+void digestMessage( std::string, router & , int);
 void createConnection(int , router &);
 void createUDP(int , router &);
-void WaitForNeighbors(int , router &);
+void Wait(int, router &);
 #endif //P3_ROUTER_H
