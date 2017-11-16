@@ -6,9 +6,10 @@
 #include "sharedFunctions.h"
 #include <netdb.h>
 #include <csignal>
-#include <vector>
 #include "router.h"
 #include <unistd.h>
+#include "Dikjstra.cpp"
+
 using std::endl;
 using std::cout;
 using std::string;
@@ -166,3 +167,37 @@ void WaitForNeighbors(int sd, router &r)
     }
 }
 
+void createFwdTable(router &r) {
+    std::vector<struct lsp> lspList = r.getLSPlist().lsps;
+    //(Destination, Cost, NextHop) - (int, int, int)
+
+    std::vector<neighbor> routingList;
+    Graph g(r.getNumRouters());
+
+
+    /*
+     //add its own list to the routing list - don't think I need for implentation of Dikjstra. Other lsp's have dest of this router
+     for (auto it = r.neighbors.begin(); it != r.neighbors.end(); ++it) {
+         routingList.push_back(*it);
+     }
+     */
+    for (auto it = lspList.begin(); it != lspList.end(); ++it){
+        for(auto it2 = (*it).neighbors.begin(); it2 != (*it).neighbors.end(); ++it2){
+            routingList.push_back(*it2);
+        }
+    }
+
+    for(auto it = routingList.begin(); it != routingList.end(); ++it){
+        //    cout << "src: " << (*it).src << " dest: " << (*it).dest << " weight: " << (*it).weight << endl;
+        g.addEdge((*it).address, (*it).port, (*it).cost);
+    }
+
+    g.shortestPath(2);  //FIXME should be src node aka stoi(r.getName()) ?
+    r.setFwdTable(*g.getFwdTable());
+
+
+    map<int,int> fwdTable = r.getFwdTable();
+    for(auto it = fwdTable.begin(); it != fwdTable.end(); ++it){
+        //    cout << (*it).first << ":" << (*it).second << endl; //dest, nodeToGoThrough
+    }
+}
