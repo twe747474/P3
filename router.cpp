@@ -12,22 +12,7 @@
 using std::endl;
 using std::cout;
 using std::string;
-void waitForAck(int sd , router &r)
-{
-    int valread;
-    char buffer[1024];
-    memset(buffer,0,1024);
-    std::ofstream myFile = getRecord(r.getName());
-    if((valread = recv(sd,buffer,1024,0)) == 0)
-    {
-        myFile<<"shit wasnt sent"<<endl;
-    }
-    else
-    {
-        myFile<<"from:: "<<sd<<valread<<" from handle::: "<<endl;
-        myFile<<buffer<<endl;
-    }
-}
+
 void * createRouter(void * portNumber)
 {
 
@@ -121,7 +106,7 @@ void createConnection(int portNumber , router &r)
         myFile<<"Sending request for a router number and port to manager"<<endl;
         string packet = "1|" + std::to_string(r.getUDPPort()) +"|0000";
         sendAll(clientSocketNumber,packet,r.getName());
-        waitForAck(clientSocketNumber , r);
+        WaitForNeighbors(clientSocketNumber, r);
         close(socketfd);
         close(clientSocketNumber);
         break;
@@ -129,5 +114,55 @@ void createConnection(int portNumber , router &r)
     //myFile<<"exiting"<<endl;
     //exit(0);
 
+}
+void digestMessage(std::string message, router &r)
+{
+    std::vector<string> brokeUp;
+    neighbor n;
+    std::vector<string> brokePacket = splitString(message,'%');
+    std::ofstream myFile = getRecord(r.getName());
+    myFile<<"Packet:: "<<message<<endl;
+    if(brokePacket.at(0) == "1")
+    {
+        brokePacket.erase(brokePacket.begin() + 0);
+        r.setHome(brokePacket.at(0));
+        brokePacket.erase(brokePacket.begin()+0);
+        for(std::string s: brokePacket)
+        {
+            brokeUp = splitString(s,'|');
+            n.address = stoi(brokeUp.at(0));
+            n.port = stoi(brokeUp.at(1));
+            n.cost = stoi(brokeUp.at(2));
+            r.addNeighbor(n);
+        }
+    }
+    else{
+        //to::do
+    }
+
+}
+
+void WaitForNeighbors(int sd, router &r)
+{
+    int valread;
+    char buffer[1024];
+    memset(buffer,0,1024);
+    std::ofstream myFile = getRecord(r.getName());
+
+    if((valread = recv(sd,buffer,1024,0)) == 0)
+    {
+        myFile<<"shit wasnt sent"<<endl;
+    }
+    else
+    {
+        digestMessage(buffer,r);
+        for(neighbor n:r.getNeighbor())
+        {
+            myFile<<"Neighbor:: "<<n.address<<endl;
+            myFile<<"Port:: "<<n.port<<endl;
+            myFile<<"Cost:: "<<n.cost<<endl;
+            myFile<<"------------------------"<<endl;
+        }
+    }
 }
 
