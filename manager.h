@@ -86,5 +86,6 @@ void createTwoWay(manager &);
 void updateNeighborPorts(int,int , manager &);
 void digestMessage(std::string , int , manager &);
 routesAndNeighbors findNeighbors(int , manager &);
+void giveNeighborHood(int ,std::string, manager & , int);
 int connectToRouter(int);
 #endif //P3_MANAGER_H

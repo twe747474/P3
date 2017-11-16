@@ -13,32 +13,7 @@
 #include <sys/select.h>
 #include "sharedFunctions.h"
 
-
 using namespace std;
-
-vector<string> splitString(string &info , char delim)
-{
-    vector<string> brokenInfo;
-    string temp = "";
-    for(int i = 0; i < info.size(); i++)
-    {
-        if(info[i] == delim )
-        {
-            brokenInfo.push_back(temp);
-            temp = "";
-        }
-        else
-        {
-            temp += info[i];
-            if(i+1 >= info.size())
-            {
-                brokenInfo.push_back(temp);
-            }
-        }
-
-    }
-    return brokenInfo;
-}
 void openFileR(string &fileName , manager &m)
 {
     ifstream inFile;
@@ -124,7 +99,7 @@ int connectToRouter(int port)
 {
     ofstream myfile = getRecord("manager");
     myfile << "port " << port << endl;
-    struct addrinfo hints, *res;
+    struct addrinfo hints, R,*res;
     int socketfd;
     struct sockaddr_in serv_addr;
     char name[128];
@@ -176,23 +151,37 @@ int connectToRouter(int port)
         int t = 0;
         int n = m.getSockets().at(m.getSockets().size() - 1) + 1;
         fd_set temp;
-        for (int i : m.getSockets())
-        {
+        for (int i : m.getSockets()) {
             FD_SET(i, &temp);
             int multiplexed = select(n, &temp, NULL, NULL, &tv);
-            if (multiplexed == -1)
-            {
+            if (multiplexed == -1) {
                 cout << "Select failed " << strerror(errno) << endl;
             }
-            if (FD_ISSET(i, &temp))
-            {
-                digestMessage(handleIncomingMessage(i, "manager") , t , m);
-                sendAll(i, "You are " + to_string(t), "manager");
+            if (FD_ISSET(i, &temp)) {
+                digestMessage(handleIncomingMessage(i, "manager"), t, m);
                 usleep(100 * 1000);
                 t++;
                 FD_ZERO(&temp);
             }
         }
+        int counter = 0;
+        for (int k: m.getSockets()) {
+            giveNeighborHood(k, to_string(counter), m, counter);
+            counter++;
+        }
+    }
+
+    //asignment packet:::alertNumber%routeAsign%firstNeighbor|port|cost%nNeigbor|nport...
+    void giveNeighborHood(int sd , string assignmnet , manager &m , int router)
+    {
+        string packet = "1%" + assignmnet  + "%";
+        for(neighborsAndCost nac : m.getTopolgy(router).neighbors)
+        {
+            packet.append(to_string(nac.neighbor)+"|");
+            packet.append(to_string(nac.portNumber)+"|");
+            packet.append((to_string(nac.cost))+'%');
+        }
+        sendAll(sd , packet , "manager");
     }
     //1=portNumber//2=Ready//-1failed
     //packet:: 1|message|routerNumber
@@ -207,6 +196,7 @@ int connectToRouter(int port)
             myFile<<sepMessage.at(1)<<endl;
             m.getTopolgy(router).myPort = stoi(sepMessage.at(1));
             updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
+
         }
         else if(sepMessage.at(0) == "2")
         {
@@ -234,7 +224,7 @@ int connectToRouter(int port)
         }
     }
    routesAndNeighbors findNeighbors(int router , manager &m)
-    {
+   {
         neighborsAndCost nac1;
         routesAndNeighbors r;
         r.home = router;
@@ -285,17 +275,22 @@ int connectToRouter(int port)
     }
 int main(int argc, char** argv)
 {
+    cout<<"Simulating...."<<endl;
     string file = argv[1];
+    cout<<"==========>"<<endl;
     manager m;
     openFileR(file , m );
+    cout<<"=====================>"<<endl;
     spawnRouters(m.getNumberOfRoutes() , m);
     multiplex(m);
+    cout<<"===================================>"<<endl;
+    cout<<"Finished"<<endl;
     for(int i = 0; i < m.topologySize();i++)
     {
-        routesAndNeighbors w = m.getTopolgy(i);
-        cout<<"Home:: "<<w.home<<endl;
-        cout<<"MyPort:: "<<w.myPort<<endl;
-        for(neighborsAndCost c: w.neighbors)
+        //giveNeighborHood(1,"2", m.getTopolgy(i)) ;
+       cout<<"Home:: "<<m.getTopolgy(i).home<<endl;
+        cout<<"MyPort:: "<<m.getTopolgy(i).myPort<<endl;
+        for(neighborsAndCost c: m.getTopolgy(i).neighbors)
         {
             cout<<"Neighbor:: "<<c.neighbor<<" "<<"Cost::  " <<c.cost<<" Port:: "<<c.portNumber<<endl;
         }

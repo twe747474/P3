@@ -3,6 +3,8 @@
 //
 #include "sharedFunctions.h"
 using std::endl;
+using std::string;
+using std::vector;
 std::ofstream getRecord(std::string file)
 {
     std::ofstream myfile;
@@ -31,6 +33,30 @@ int sendAll(int sd, std::string packet,std::string fileName)
     len = total; // return number actually sent here
 
     return n==-1?-1:0;
+}
+
+vector<string> splitString(string &info , char delim)
+{
+    vector<string> brokenInfo;
+    string temp = "";
+    for(int i = 0; i < info.size(); i++)
+    {
+        if(info[i] == delim )
+        {
+            brokenInfo.push_back(temp);
+            temp = "";
+        }
+        else
+        {
+            temp += info[i];
+            if(i+1 >= info.size())
+            {
+                brokenInfo.push_back(temp);
+            }
+        }
+
+    }
+    return brokenInfo;
 }
 
 std::string handleIncomingMessage(int i , std::string fileName)
