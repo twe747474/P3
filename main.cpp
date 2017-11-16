@@ -292,7 +292,7 @@ int connectToRouter(int port)
 
         }
     }
-/*
+
 int main(int argc, char** argv)
 {
     cout<<"Simulating...."<<endl;
@@ -319,4 +319,4 @@ int main(int argc, char** argv)
 //    }
     return 0;
 }
-*/
+
