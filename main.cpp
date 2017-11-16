@@ -157,7 +157,8 @@ int connectToRouter(int port)
             if (multiplexed == -1) {
                 cout << "Select failed " << strerror(errno) << endl;
             }
-            if (FD_ISSET(i, &temp)) {
+            if (FD_ISSET(i, &temp))
+            {
                 digestMessage(handleIncomingMessage(i, "manager"), t, m);
                 usleep(100 * 1000);
                 t++;
@@ -165,12 +166,24 @@ int connectToRouter(int port)
             }
         }
         int counter = 0;
-        for (int k: m.getSockets()) {
+        for (int k: m.getSockets())
+        {
             giveNeighborHood(k, to_string(counter), m, counter);
             counter++;
         }
-    }
+        routerGoLive(m);
 
+    }
+    void routerGoLive(manager &m)
+    {
+
+        for(int i = 0 ; i < m.getNumberOfRoutes() ; i++)
+        {
+            sendAll(m.getSockets().at(i) , "2%GoLive" , "manager");
+            digestMessage(handleIncomingMessage(m.getSockets().at(i),"manager") , 0 , m);
+
+        }
+    }
     //asignment packet:::alertNumber%routeAsign%firstNeighbor|port|cost%nNeigbor|nport...
     void giveNeighborHood(int sd , string assignmnet , manager &m , int router)
     {
@@ -182,8 +195,10 @@ int connectToRouter(int port)
             packet.append((to_string(nac.cost))+'%');
         }
         sendAll(sd , packet , "manager");
+        //wait for signature from router.
+        digestMessage(handleIncomingMessage(sd , "manager"), router , m);
     }
-    //1=portNumber//2=Ready//-1failed
+    //1=portNumber//2=Connection-up//-1failed//3=signature.
     //packet:: 1|message|routerNumber
     void digestMessage(string message , int router , manager &m)
     {
@@ -204,15 +219,19 @@ int connectToRouter(int port)
         }
         else if(sepMessage.at(0) == "3")
         {
-            //to::do
+            //package signed.
+            myFile<<"Packaged signed by:: "<<sepMessage.at(2)<<endl;
         }
 
     }
-    void updateNeighborPorts(int router , int port , manager &m ) {
-        for (neighborsAndCost i : m.getTopolgy(router).neighbors) {
+    void updateNeighborPorts(int router , int port , manager &m )
+    {
+        for (neighborsAndCost i : m.getTopolgy(router).neighbors)
+        {
             int flag = false;
             int t = i.neighbor;
-            for (neighborsAndCost &k : m.getTopolgy(i.neighbor).neighbors) {
+            for (neighborsAndCost &k : m.getTopolgy(i.neighbor).neighbors)
+            {
                 if (k.neighbor == router) {
                     k.portNumber = port;
                     flag = true;
@@ -282,20 +301,21 @@ int main(int argc, char** argv)
     openFileR(file , m );
     cout<<"=====================>"<<endl;
     spawnRouters(m.getNumberOfRoutes() , m);
-    multiplex(m);
     cout<<"===================================>"<<endl;
+    multiplex(m);
+    cout<<"=========================================================>"<<endl;
     cout<<"Finished"<<endl;
-    for(int i = 0; i < m.topologySize();i++)
-    {
-        //giveNeighborHood(1,"2", m.getTopolgy(i)) ;
-       cout<<"Home:: "<<m.getTopolgy(i).home<<endl;
-        cout<<"MyPort:: "<<m.getTopolgy(i).myPort<<endl;
-        for(neighborsAndCost c: m.getTopolgy(i).neighbors)
-        {
-            cout<<"Neighbor:: "<<c.neighbor<<" "<<"Cost::  " <<c.cost<<" Port:: "<<c.portNumber<<endl;
-        }
-
-    }
+//    for(int i = 0; i < m.topologySize();i++)
+//    {
+//        //giveNeighborHood(1,"2", m.getTopolgy(i)) ;
+//       cout<<"Home:: "<<m.getTopolgy(i).home<<endl;
+//        cout<<"MyPort:: "<<m.getTopolgy(i).myPort<<endl;
+//        for(neighborsAndCost c: m.getTopolgy(i).neighbors)
+//        {
+//            cout<<"Neighbor:: "<<c.neighbor<<" "<<"Cost::  " <<c.cost<<" Port:: "<<c.portNumber<<endl;
+//        }
+//
+//    }
     return 0;
 }
 

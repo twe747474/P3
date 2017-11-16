@@ -12,6 +12,9 @@ struct neighbor {
     int address;    //src
     int port;       //dest
     int cost;
+
+    int socket;
+
     neighbor(int s, int d, int w){
         address = s;
         port = d;
@@ -22,6 +25,7 @@ struct neighbor {
 struct lsp {    //link state packet
     int src;
     std::vector<neighbor> neighbors;
+
 };
 class router{
     std::string name;
@@ -29,13 +33,31 @@ class router{
     int nRouters;
     std::vector<neighbor> myNeighbors;
     std::string home;
+
+    int udpSocket;
+    int tcpSocket;
+    int managerTCP;
+
     lsp lspacket;
     struct lspList {
         std::vector<struct lsp> lsps;
     } lspackets;
     std::map<int,int> fwdTable; //<dest,adjacentNode>   NOTE: if adjacentNode is this router then dest is connected to this router, send direct to dest
 
+
 public:
+    void setTCPsocket(int sd)
+    {
+        tcpSocket = sd;
+    }
+    void setmanagerTCP(int sd)
+    {
+        managerTCP = sd;
+    }
+    void setSocket(int sd)
+    {
+        udpSocket = sd;
+    }
     void addNeighbor(neighbor n)
     {
         myNeighbors.push_back(n);
@@ -51,6 +73,18 @@ public:
     void setUDP(int r)
     {
         udpPort = r ;
+    }
+    int getManagerConnection()
+    {
+        return managerTCP;
+    }
+    int getTCPsocket()
+    {
+        return tcpSocket;
+    }
+    int getUdpSocket()
+    {
+        return udpSocket;
     }
     int getUDPPort()
     {
@@ -104,9 +138,12 @@ public:
     }
 
 };
-void digestMessage( std::string, router &);
+void openAndListen(router &);
+void meetNeigbors(router &);
+void digestMessage( std::string, router & , int);
 void createConnection(int , router &);
 void createUDP(int , router &);
+void Wait(int, router &);
 void WaitForNeighbors(int , router &);
 void createFwdTable(router &);
 #endif //P3_ROUTER_H

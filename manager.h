@@ -88,4 +88,6 @@ void digestMessage(std::string , int , manager &);
 routesAndNeighbors findNeighbors(int , manager &);
 void giveNeighborHood(int ,std::string, manager & , int);
 int connectToRouter(int);
+void routerGoLive(manager &);
+
 #endif //P3_MANAGER_H
