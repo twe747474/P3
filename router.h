@@ -146,4 +146,5 @@ void createUDP(int , router &);
 void Wait(int, router &);
 void WaitForNeighbors(int , router &);
 void createFwdTable(router &);
+void updateFwdTable(std::map<int,int> &, router &);
 #endif //P3_ROUTER_H

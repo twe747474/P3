@@ -253,12 +253,37 @@ void createFwdTable(router &r) {
         g.addEdge((*it).address, (*it).port, (*it).cost);
     }
 
-    g.shortestPath(2);  //FIXME should be src node aka stoi(r.getName()) ?
+    g.shortestPath(stoi(r.getName()));  //FIXME was 2, should be src node aka stoi(r.getName()) ?
     r.setFwdTable(*g.getFwdTable());
 
 
     map<int,int> fwdTable = r.getFwdTable();
     for(auto it = fwdTable.begin(); it != fwdTable.end(); ++it){
-        //    cout << (*it).first << ":" << (*it).second << endl; //dest, nodeToGoThrough
+            cout << (*it).first << ":" << (*it).second << endl; //dest, neighbor
     }
+    updateFwdTable(fwdTable, r);
+
+}
+
+void updateFwdTable(map<int,int> &tmpFwdTable, router &r){
+    map<int,int> fwdTable;
+    int destNode;
+    int currNode;
+    int tmp;
+    int routerName = stoi(r.getName());
+    for(auto it = tmpFwdTable.begin(); it != tmpFwdTable.end(); ++it){
+        if((*it).second != routerName) {
+            destNode = (*it).first;
+            currNode = (*it).second;
+            while (currNode != routerName) {
+                tmp = currNode;
+                currNode = tmpFwdTable[currNode];
+            }
+            fwdTable[destNode] = tmp;
+        }
+        else{
+            fwdTable[(*it).first] = (*it).first;
+        }
+    }
+    r.setFwdTable(fwdTable);
 }
