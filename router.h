@@ -162,6 +162,14 @@ public:
 
         aMap[destRouter].push_back(createAck(srcRouter, packet));
     }
+    int getAckSize(int k)
+    {
+        return aMap.at(k).size();
+    }
+    ackSet getAck(int k)
+    {
+      return  aMap.at(k);
+    }
     void updateAck(int router, int src)
     {
         bool updated = false;

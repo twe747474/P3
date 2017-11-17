@@ -168,27 +168,49 @@ void digestMessage(std::string message, router &r , int sd)
     {
         string message ="3|Signed|"+r.getHome();
         sendAll(sd , message, r.getName());
-
-        Wait(r.getTCPsocket() , r);
-
+        floodNetwork(r.getFowardingPacket() , r);
+        listenMode(r);
     }
      //ack 4%ack%fromWho%inRegards
     else if(brokePacket.at(0) == "4")
     {
         updateAck(brokePacket.at(1) , brokePacket.at(2), r);
+        fowardFlood(r);
+
     }
+
          //packet with some badass info...
         // asignment packet:::alertNumber%fromRouter%firstNeighbor|port|cost%nNeigbor|nport...
     else if(brokePacket.at(0) == "5")
     {
-       
+        //src of packet packet...
         brokePacket.erase(brokePacket.begin() + 0);
+        int src = stoi(brokePacket.at(0));
         parseAndAdd(brokePacket, r);
-
-
+        std::string newMessage = "5%"+r.getHome() +"%" + message;
+        floodNetwork(message,r);
 
     }
 
+}
+void floodNetwork(std::string packet , router &r)
+{
+
+}
+
+void fowardFlood(router &r)
+{
+    for(neighbor n : r.getNeighbor())
+    {
+       for(int i = 0 ; i <r.getAckSize(n.address) ; i++)
+       {
+           if(r.getAck(n.address).at(i).received == false)
+           {
+               sendDataGram(r.getUDPPort() ,r.getAck(n.address).at(i).packet , r );
+           }
+
+       }
+    }
 }
 void updateAck(string fromWho , string inRegards, router &r)
 {
@@ -267,7 +289,8 @@ bool waitForAck(int port ,router &r)
 
 string createFowardingPacket(router &r)
 {
-    string packet = "%4%";
+    string packet = "5%" +r.getHome() +"%";
+
     for(neighbor nac : r.getNeighbor())
     {
         packet.append(std::to_string(nac.address)+"|");
@@ -350,7 +373,8 @@ void createFwdTable(router &r) {
 
 }
 
-void updateFwdTable(map<int,int> &tmpFwdTable, router &r){
+void updateFwdTable(map<int,int> &tmpFwdTable, router &r)
+{
     map<int,int> fwdTable;
     int destNode;
     int currNode;
