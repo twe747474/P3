@@ -8,7 +8,6 @@
 #include <csignal>
 #include "router.h"
 #include <unistd.h>
-
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -66,8 +65,8 @@ void createUDP(int portNumber , router &r)
         perror("bind failed");
     }
 
-    r.setSocket(sock);
-    myFile<< currentDateTime() << " UDP created PortNumber: "<<udpPort<<"Socket:: "<<sock<<endl;
+    r.setSocket(fd);
+    myFile<< currentDateTime() << " UDP created PortNumber: "<<udpPort<<"Socket:: "<<fd<<endl;
 
     //close(sock);
 }
@@ -177,10 +176,16 @@ void digestMessage(std::string message, router &r , int sd)
     {
         updateAck(brokePacket.at(1) , brokePacket.at(2), r);
     }
-     //packet
+         //packet with some badass info...
+        // asignment packet:::alertNumber%fromRouter%firstNeighbor|port|cost%nNeigbor|nport...
     else if(brokePacket.at(0) == "5")
     {
-        
+       
+        brokePacket.erase(brokePacket.begin() + 0);
+        parseAndAdd(brokePacket, r);
+
+
+
     }
 
 }
@@ -190,19 +195,32 @@ void updateAck(string fromWho , string inRegards, router &r)
     int srcRouter = stoi(inRegards);
     r.updateAck(routerName, srcRouter);
 }
-void meetNeigbors(router &r)
+void parseAndAdd(vector<string> packet, router &r)
 {
-    int tempSd;
-
-    for(neighbor &n :r.getNeighbor())
+    if(checkTable(packet.at(0) ,r ))
     {
-        while(!sendDataGram(n.port,createDataGram(r),r))
-        {
-
+        lsp l;
+        neighbor n;
+        l.src = stoi(packet.at(0));
+        std::vector<string> brokePacket;
+        packet.erase(packet.begin() + 0);
+        for (string s:packet) {
+            brokePacket = splitString(s, '|');
+            //address = src
+            n.address = l.src;
+            //port = dest
+            n.port = stoi(brokePacket.at(0));
+            n.cost = stoi(brokePacket.at(1));
+            l.neighbors.push_back(n);
         }
-
+        r.addLSP(l);
     }
-    Wait(r.getTCPsocket(),r);
+
+}
+bool checkTable(std::string src , router &r)
+{
+    return false;
+
 }
 bool sendDataGram(int port , std::string packet , router &r )
 {

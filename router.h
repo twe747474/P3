@@ -8,6 +8,7 @@
 #define P3_ROUTER_H
 
 void * createRouter(void *);
+
 struct neighbor {
     int address;    //src
     int port;       //dest
@@ -174,7 +175,6 @@ void updateAck(std::string, std::string, router&);
 bool waitForAck(int , router &);
 bool sendDataGram(int , std::string , router &);
 void openAndListen(router &);
-void meetNeigbors(router &);
 void digestMessage( std::string, router & , int);
 void createConnection(int , router &);
 void createUDP(int , router &);
@@ -183,4 +183,6 @@ void WaitForNeighbors(int , router &);
 void createFwdTable(router &);
 void listenMode(router &);
 void updateFwdTable(std::map<int,int> &, router &);
+void parseAndAdd(std::vector<std::string>, router &);
+bool checkTable(std::string , router &);
 #endif //P3_ROUTER_H
