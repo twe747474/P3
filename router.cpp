@@ -257,7 +257,8 @@ void createFwdTable(router &r) {
     r.setFwdTable(*g.getFwdTable());
 
 
-    map<int,int> fwdTable = r.getFwdTable();
+    map<int,int> fwdTable;
+    fwdTable = r.getFwdTable();
     for(auto it = fwdTable.begin(); it != fwdTable.end(); ++it){
             cout << (*it).first << ":" << (*it).second << endl; //dest, neighbor
     }
