@@ -98,7 +98,7 @@ void spawnRouters(int processCount , manager &m)
 int connectToRouter(int port)
 {
     ofstream myfile = getRecord("manager");
-    myfile << "port " << port << endl;
+    myfile << currentDateTime() << " port " << port << endl;
     struct addrinfo hints, R,*res;
     int socketfd;
     struct sockaddr_in serv_addr;
@@ -132,7 +132,7 @@ int connectToRouter(int port)
         perror("client: connect");
     } else
         {
-            myfile << "connected!" << endl;
+            myfile << currentDateTime() << " connected!" << endl;
         }
     char incomingBuffer[1024];
     memset(incomingBuffer, 0, 1024);
