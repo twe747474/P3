@@ -34,7 +34,7 @@ class router{
     int nRouters;
     std::vector<neighbor> myNeighbors;
     std::string home;
-
+    std::string fowardingPacket;
     int udpSocket;
     int tcpSocket;
     int managerTCP;
@@ -125,6 +125,14 @@ public:
     {
         return name;
     }
+    void setFowardingPacket(std::string t)
+    {
+        fowardingPacket = t;
+    }
+    std::string getFowardingPacket()
+    {
+        return fowardingPacket;
+    }
     void setFwdTable(std::map<int,int> &tmp)
     {
         fwdTable = tmp;
@@ -170,7 +178,11 @@ public:
         }
     }
 };
-std::string createDataGram(router &r);
+std::string createFowardingPacket(router &r);
+//floods network with given packet.
+void floodNetwork(std::string , router &);
+//resend all ack==false
+void fowardFlood(router &);
 void updateAck(std::string, std::string, router&);
 bool waitForAck(int , router &);
 bool sendDataGram(int , std::string , router &);
