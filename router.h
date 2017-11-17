@@ -39,10 +39,22 @@ class router{
     int managerTCP;
 
     lsp lspacket;
-    struct lspList {
+    struct lspList
+    {
         std::vector<struct lsp> lsps;
     } lspackets;
-    std::map<int,int> fwdTable; //<dest,adjacentNode>   NOTE: if adjacentNode is this router then dest is connected to this router, send direct to dest
+    std::map<int,int> fwdTable; //<dest,adjacentNode>
+    struct ack
+    {
+        int srcRouter;
+        std::string packet;
+        bool received;
+    };
+    typedef std::vector<struct ack> ackSet;
+    typedef std::map<int, ackSet> ackMap;
+    ackMap aMap;
+
+
 
 
 public:
@@ -112,15 +124,15 @@ public:
     {
         return name;
     }
-    void setFwdTable(std::map<int,int> tmp)
+    void setFwdTable(std::map<int,int> &tmp)
     {
         fwdTable = tmp;
     }
-    std::map<int,int> getFwdTable()
+    std::map<int,int>& getFwdTable()
     {
         return fwdTable;
     }
-    void addLSP(struct lsp tmp)
+    void addLSP(struct lsp &tmp)
     {
         lspackets.lsps.push_back(tmp);
     }
@@ -128,13 +140,17 @@ public:
     {
         return lspackets;
     }
-    void setLSP(struct lsp tmp)
+    void setLSP(struct lsp &tmp)
     {
         lspacket = tmp;
     }
     struct lsp getLSP()
     {
         return lspacket;
+    }
+    void addAck(int router, struct ack &tmp)
+    {
+        aMap[router].push_back(tmp);
     }
 
 };
@@ -151,4 +167,5 @@ void Wait(int, router &);
 void WaitForNeighbors(int , router &);
 void createFwdTable(router &);
 void listenMode(router &);
+void updateFwdTable(std::map<int,int> &, router &);
 #endif //P3_ROUTER_H

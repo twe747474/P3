@@ -27,7 +27,7 @@ void * createRouter(void * portNumber)
     router r;
     r.setName(std::to_string((*(int*)portNumber)));
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"routerCreated "<<*(int*)portNumber<<std::endl;
+    myFile<<currentDateTime() << " routerCreated "<<*(int*)portNumber<<std::endl;
     createUDP(*(int*)portNumber , r);
     createConnection(*(int*)portNumber , r);
     return 0;
@@ -35,7 +35,7 @@ void * createRouter(void * portNumber)
 void createUDP(int portNumber , router &r)
 {
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"Creating udp "<<endl;
+    myFile<<currentDateTime() << " Creating udp "<<endl;
     int udpPort = portNumber + 100;
     r.setUDP(udpPort);
     struct sockaddr_in myaddr;      /* our address */
@@ -65,15 +65,17 @@ void createUDP(int portNumber , router &r)
     {
         perror("bind failed");
     }
-    r.setSocket(fd);
-    myFile<<"UDP created PortNumber: "<<udpPort<<"Socket:: "<<fd<<endl;
+
+    r.setSocket(sock);
+    myFile<< currentDateTime() << " UDP created PortNumber: "<<udpPort<<"Socket:: "<<sock<<endl;
+
     //close(sock);
 }
 
 void createConnection(int portNumber , router &r)
 {
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"Creating connection tcp connection to manager "<<endl;
+    myFile<< currentDateTime() << " Creating connection tcp connection to manager "<<endl;
     struct addrinfo hints, *res;
     int socketfd, b , clientSocketNumber,valread;
     struct sockaddr_storage;
@@ -112,9 +114,9 @@ void createConnection(int portNumber , router &r)
     memset(buffer , 0 , 128);
     while((clientSocketNumber=accept(socketfd, (struct sockaddr *) &address, &addr_size)))
     {
-        myFile<<"Connected to manager" <<std::endl;
+        myFile<< currentDateTime() << " Connected to manager" <<std::endl;
         //usleep(1000*100);
-        myFile<<"Sending request for a router number and port to manager"<<endl;
+        myFile<< currentDateTime() << " Sending request for a router number and port to manager"<<endl;
         string packet = "1|" + std::to_string(r.getUDPPort()) +"|0000";
         sendAll(clientSocketNumber,packet,r.getName());
         r.setTCPsocket(clientSocketNumber);
@@ -131,7 +133,7 @@ void digestMessage(std::string message, router &r , int sd)
     neighbor n;
     std::vector<string> brokePacket = splitString(message,'%');
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"Packet:: "<<message<<endl;
+    myFile<< currentDateTime() << " Packet:: "<<message<<endl;
     //neighborhood is coming in.
     if(brokePacket.at(0) == "1")
     {
@@ -152,11 +154,11 @@ void digestMessage(std::string message, router &r , int sd)
         for(neighbor n:r.getNeighbor())
         {
 
-            myFile<<"------------------------"<<endl;
-            myFile<<"| Neighbor:: "<<n.address<<endl;
-            myFile<<"| Port:: "<<n.port<<endl;
-            myFile<<"| Cost:: "<<n.cost<<endl;
-            myFile<<"------------------------"<<endl;
+            myFile<<currentDateTime() << " ------------------------"<<endl;
+            myFile<<currentDateTime() << " | Neighbor:: "<<n.address<<endl;
+            myFile<<currentDateTime() << " | Port:: "<<n.port<<endl;
+            myFile<<currentDateTime() << " | Cost:: "<<n.cost<<endl;
+            myFile<<currentDateTime() << " ------------------------"<<endl;
         }
         //wait for next step from manager.
         Wait(sd,r);
@@ -305,12 +307,38 @@ void createFwdTable(router &r) {
         g.addEdge((*it).address, (*it).port, (*it).cost);
     }
 
-    g.shortestPath(2);  //FIXME should be src node aka stoi(r.getName()) ?
+    g.shortestPath(stoi(r.getName()));  //FIXME was 2, should be src node aka stoi(r.getName()) ?
     r.setFwdTable(*g.getFwdTable());
 
 
-    map<int,int> fwdTable = r.getFwdTable();
+    map<int,int> fwdTable;
+    fwdTable = r.getFwdTable();
     for(auto it = fwdTable.begin(); it != fwdTable.end(); ++it){
-        //    cout << (*it).first << ":" << (*it).second << endl; //dest, nodeToGoThrough
+            cout << (*it).first << ":" << (*it).second << endl; //dest, neighbor
     }
+    updateFwdTable(fwdTable, r);
+
+}
+
+void updateFwdTable(map<int,int> &tmpFwdTable, router &r){
+    map<int,int> fwdTable;
+    int destNode;
+    int currNode;
+    int tmp;
+    int routerName = stoi(r.getName());
+    for(auto it = tmpFwdTable.begin(); it != tmpFwdTable.end(); ++it){
+        if((*it).second != routerName) {
+            destNode = (*it).first;
+            currNode = (*it).second;
+            while (currNode != routerName) {
+                tmp = currNode;
+                currNode = tmpFwdTable[currNode];
+            }
+            fwdTable[destNode] = tmp;
+        }
+        else{
+            fwdTable[(*it).first] = (*it).first;
+        }
+    }
+    r.setFwdTable(fwdTable);
 }
