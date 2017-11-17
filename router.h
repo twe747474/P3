@@ -124,15 +124,15 @@ public:
     {
         return name;
     }
-    void setFwdTable(std::map<int,int> tmp)
+    void setFwdTable(std::map<int,int> &tmp)
     {
         fwdTable = tmp;
     }
-    std::map<int,int> getFwdTable()
+    std::map<int,int>& getFwdTable()
     {
         return fwdTable;
     }
-    void addLSP(struct lsp tmp)
+    void addLSP(struct lsp &tmp)
     {
         lspackets.lsps.push_back(tmp);
     }
@@ -140,7 +140,7 @@ public:
     {
         return lspackets;
     }
-    void setLSP(struct lsp tmp)
+    void setLSP(struct lsp &tmp)
     {
         lspacket = tmp;
     }
@@ -148,7 +148,7 @@ public:
     {
         return lspacket;
     }
-    void addAck(int router, struct ack tmp)
+    void addAck(int router, struct ack &tmp)
     {
         aMap[router].push_back(tmp);
     }
