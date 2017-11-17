@@ -160,7 +160,7 @@ int connectToRouter(int port)
             if (FD_ISSET(i, &temp))
             {
                 digestMessage(handleIncomingMessage(i, "manager"), t, m);
-                usleep(100 * 1000);
+              //  usleep(100 * 1000);
                 t++;
                 FD_ZERO(&temp);
             }
