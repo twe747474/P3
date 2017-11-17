@@ -152,10 +152,25 @@ public:
     {
         aMap[router].push_back(tmp);
     }
-
+    void updateAck(int router, int src)
+    {
+        bool updated = false;
+        for (auto it = aMap[router].begin(); it != aMap[router].end(); ++it)
+        {
+            if((*it).srcRouter == src){
+                (*it).received = true;
+                updated = true;
+                break;
+            }
+        }
+        if(!updated){
+            std::cerr << "Something went wrong! \nrouter: " << router << " was not found in src: " << src << std::endl;
+            exit(1);
+        }
+    }
 };
 std::string createDataGram(router &r);
-void updateAck(std::string, std::string);
+void updateAck(std::string, std::string, router&);
 bool waitForAck(int , router &);
 bool sendDataGram(int , std::string , router &);
 void openAndListen(router &);

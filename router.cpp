@@ -175,18 +175,20 @@ void digestMessage(std::string message, router &r , int sd)
      //ack 4%ack%fromWho%inRegards
     else if(brokePacket.at(0) == "4")
     {
-        updateAck(brokePacket.at(1) , brokePacket.at(2));
+        updateAck(brokePacket.at(1) , brokePacket.at(2), r);
     }
      //packet
     else if(brokePacket.at(0) == "5")
     {
-
+        
     }
 
 }
-void updateAck(string fromWho , string inRegards)
+void updateAck(string fromWho , string inRegards, router &r)
 {
-
+    int routerName = stoi(fromWho);
+    int srcRouter = stoi(inRegards);
+    r.updateAck(routerName, srcRouter);
 }
 void meetNeigbors(router &r)
 {
