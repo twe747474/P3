@@ -27,7 +27,7 @@ void * createRouter(void * portNumber)
     router r;
     r.setName(std::to_string((*(int*)portNumber)));
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"routerCreated "<<*(int*)portNumber<<std::endl;
+    myFile<<currentDateTime() << " routerCreated "<<*(int*)portNumber<<std::endl;
     createUDP(*(int*)portNumber , r);
     createConnection(*(int*)portNumber , r);
     return 0;
@@ -35,7 +35,7 @@ void * createRouter(void * portNumber)
 void createUDP(int portNumber , router &r)
 {
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"Creating udp "<<endl;
+    myFile<<currentDateTime() << " Creating udp "<<endl;
     int udpPort = portNumber + 100;
     r.setUDP(udpPort);
     struct addrinfo hints, *res;
@@ -64,14 +64,14 @@ void createUDP(int portNumber , router &r)
 
     }
     r.setSocket(sock);
-    myFile<<"UDP created PortNumber: "<<udpPort<<"Socket:: "<<sock<<endl;
+    myFile<< currentDateTime() << " UDP created PortNumber: "<<udpPort<<"Socket:: "<<sock<<endl;
     //close(sock);
 }
 
 void createConnection(int portNumber , router &r)
 {
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"Creating connection tcp connection to manager "<<endl;
+    myFile<< currentDateTime() << " Creating connection tcp connection to manager "<<endl;
     struct addrinfo hints, *res;
     int socketfd, b , clientSocketNumber,valread;
     struct sockaddr_storage;
@@ -110,9 +110,9 @@ void createConnection(int portNumber , router &r)
     memset(buffer , 0 , 128);
     while((clientSocketNumber=accept(socketfd, (struct sockaddr *) &address, &addr_size)))
     {
-        myFile<<"Connected to manager" <<std::endl;
+        myFile<< currentDateTime() << " Connected to manager" <<std::endl;
         //usleep(1000*100);
-        myFile<<"Sending request for a router number and port to manager"<<endl;
+        myFile<< currentDateTime() << " Sending request for a router number and port to manager"<<endl;
         string packet = "1|" + std::to_string(r.getUDPPort()) +"|0000";
         sendAll(clientSocketNumber,packet,r.getName());
         r.setTCPsocket(clientSocketNumber);
@@ -129,7 +129,7 @@ void digestMessage(std::string message, router &r , int sd)
     neighbor n;
     std::vector<string> brokePacket = splitString(message,'%');
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<"Packet:: "<<message<<endl;
+    myFile<< currentDateTime() << " Packet:: "<<message<<endl;
     //neighborhood is coming in.
     if(brokePacket.at(0) == "1")
     {
@@ -150,11 +150,11 @@ void digestMessage(std::string message, router &r , int sd)
         for(neighbor n:r.getNeighbor())
         {
 
-            myFile<<"------------------------"<<endl;
-            myFile<<"| Neighbor:: "<<n.address<<endl;
-            myFile<<"| Port:: "<<n.port<<endl;
-            myFile<<"| Cost:: "<<n.cost<<endl;
-            myFile<<"------------------------"<<endl;
+            myFile<<currentDateTime() << " ------------------------"<<endl;
+            myFile<<currentDateTime() << " | Neighbor:: "<<n.address<<endl;
+            myFile<<currentDateTime() << " | Port:: "<<n.port<<endl;
+            myFile<<currentDateTime() << " | Cost:: "<<n.cost<<endl;
+            myFile<<currentDateTime() << " ------------------------"<<endl;
         }
         //wait for next step from manager.
         Wait(sd,r);

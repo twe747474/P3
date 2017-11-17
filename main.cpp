@@ -203,12 +203,12 @@ int connectToRouter(int port)
     void digestMessage(string message , int router , manager &m)
     {
         ofstream myFile = getRecord("manager");
-        myFile<<"Digesting message"<<endl;
+        myFile<<currentDateTime() << " Digesting message"<<endl;
         vector<string> sepMessage = splitString(message , '|');
         if(sepMessage.at(0) == "1")
         {
             //expecting port
-            myFile<<sepMessage.at(1)<<endl;
+            myFile<<currentDateTime() << " " << sepMessage.at(1)<<endl;
             m.getTopolgy(router).myPort = stoi(sepMessage.at(1));
             updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
 
@@ -220,7 +220,7 @@ int connectToRouter(int port)
         else if(sepMessage.at(0) == "3")
         {
             //package signed.
-            myFile<<"Packaged signed by:: "<<sepMessage.at(2)<<endl;
+            myFile<<currentDateTime() << " Packaged signed by:: "<<sepMessage.at(2)<<endl;
         }
 
     }
