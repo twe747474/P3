@@ -160,6 +160,7 @@ void digestMessage(std::string message, router &r , int sd)
             myFile<<currentDateTime() << " ------------------------"<<endl;
         }
         //wait for next step from manager.
+        r.setFowardingPacket(createFowardingPacket(r));
         Wait(sd,r);
     }
     //go live message from router.
@@ -197,7 +198,7 @@ void updateAck(string fromWho , string inRegards, router &r)
 }
 void parseAndAdd(vector<string> packet, router &r)
 {
-    if(checkTable(packet.at(0) ,r ))
+    if(!checkTable(packet.at(0) ,r ))
     {
         lsp l;
         neighbor n;
@@ -217,29 +218,38 @@ void parseAndAdd(vector<string> packet, router &r)
     }
 
 }
+//to::do need to see if we have already have data.
 bool checkTable(std::string src , router &r)
 {
+    vector<lsp> tmp = r.getLSPlist().lsps;
+    for(lsp l : tmp)
+    {
+        if(std::to_string(l.src) == src)
+        {
+            return true;
+        }
+    }
+
     return false;
 
 }
 bool sendDataGram(int port , std::string packet , router &r )
 {
-    struct sockaddr_in address , serv_addr;
-    socklen_t addr_size;
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) == -1)
+    sockaddr_in servaddr;
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(port);
+    struct hostent *hp = gethostbyname("127.0.0.1");
+    memcpy((void *)&servaddr.sin_addr, hp->h_addr_list[0], hp->h_length);
+    std::string test = r.getFowardingPacket();
+/* send a message to the server */
+    if (sendto(r.getUdpSocket(), test.c_str(), strlen(test.c_str()), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
     {
-        cout << "\nInvalid address/ Address not supported \n" << endl;
+        perror("sendto failed");
+    }
 
-    }
-    if(sendto(r.getUdpSocket(), packet.c_str(), packet.size(), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr))!=packet.size())
-    {
-        perror("Mismatch in number of bytes sent");
-        exit(EXIT_FAILURE);
-    }
     return waitForAck(port,r);
 }
+//only needs to be used for tcp connection
 bool waitForAck(int port ,router &r)
 {
     struct sockaddr_in remaddr;
@@ -255,7 +265,7 @@ bool waitForAck(int port ,router &r)
 }
 
 
-string createDataGram(router &r)
+string createFowardingPacket(router &r)
 {
     string packet = "%4%";
     for(neighbor nac : r.getNeighbor())
