@@ -174,22 +174,26 @@ void digestMessage(std::string message, router &r , int sd)
      //ack 4%ack%fromWho%inRegards
     else if(brokePacket.at(0) == "4")
     {
-        updateAck(brokePacket.at(1) , brokePacket.at(2));
+        updateAck(brokePacket.at(1) , brokePacket.at(2), r);
     }
          //packet with some badass info...
         // asignment packet:::alertNumber%fromRouter%firstNeighbor|port|cost%nNeigbor|nport...
     else if(brokePacket.at(0) == "5")
     {
+       
         brokePacket.erase(brokePacket.begin() + 0);
         parseAndAdd(brokePacket, r);
+
 
 
     }
 
 }
-void updateAck(string fromWho , string inRegards)
+void updateAck(string fromWho , string inRegards, router &r)
 {
-
+    int routerName = stoi(fromWho);
+    int srcRouter = stoi(inRegards);
+    r.updateAck(routerName, srcRouter);
 }
 void parseAndAdd(vector<string> packet, router &r)
 {
