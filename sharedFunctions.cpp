@@ -20,8 +20,8 @@ int sendAll(int sd, std::string packet,std::string fileName)
     int bytesleft = len;
     int n;
     std::ofstream myFile = getRecord(fileName);
-    myFile<<"Size of packet "<<len<<endl;
-    myFile<<"my packet " <<packet<<endl;
+    myFile<< currentDateTime() << " Size of packet "<<len<<endl;
+    myFile<< currentDateTime() << " my packet " <<packet<<endl;
     while(total < len)
     {
         n = send(sd, packetTosend+total, bytesleft, 0);
@@ -29,7 +29,7 @@ int sendAll(int sd, std::string packet,std::string fileName)
         total += n;
         bytesleft -= n;
     }
-    myFile<<"Size sent "<<total<<endl;
+    myFile<< currentDateTime() << " Size sent "<<total<<endl;
     len = total; // return number actually sent here
 
     return n==-1?-1:0;
@@ -67,12 +67,12 @@ std::string handleIncomingMessage(int i , std::string fileName)
     std::ofstream myFile = getRecord(fileName);
     if((valread = recv(i,buffer,1024,0)) == 0)
     {
-        myFile<<"shit wasnt sent"<<endl;
+        myFile<<currentDateTime()<< " shit wasnt sent"<<endl;
     }
     else
     {
-        myFile<<"from:: "<<i<<" "<<valread<<" from handle::: "<<endl;
-        myFile<<buffer<<endl;
+        myFile<<currentDateTime()<< " from:: "<<i<<" "<<valread<<" from handle::: "<<endl;
+        myFile<<currentDateTime()<< " " << buffer<<endl;
         return  buffer;
     }
     return "";
