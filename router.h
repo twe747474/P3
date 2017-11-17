@@ -152,7 +152,7 @@ public:
     {
         aMap[router].push_back(tmp);
     }
-    
+
 };
 void openAndListen(router &);
 void meetNeigbors(router &);
