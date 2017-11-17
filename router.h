@@ -157,9 +157,10 @@ public:
     {
         return lspacket;
     }
-    void addAck(int router, struct ack &tmp)
+    void addAck(int destRouter, int srcRouter, std::string packet)
     {
-        aMap[router].push_back(tmp);
+
+        aMap[destRouter].push_back(createAck(srcRouter, packet));
     }
     void updateAck(int router, int src)
     {
@@ -177,10 +178,17 @@ public:
             exit(1);
         }
     }
+    struct ack createAck(int srcRouter, std::string packet){
+        ack tmp;
+        tmp.srcRouter = srcRouter;
+        tmp.packet = packet;
+        tmp.received = false;
+        return tmp;
+    }
 };
 std::string createFowardingPacket(router &r);
 //floods network with given packet.
-void floodNetwork(std::string , router &);
+void floodNetwork(std::string , router &, int);
 //resend all ack==false
 void fowardFlood(router &);
 void updateAck(std::string, std::string, router&);

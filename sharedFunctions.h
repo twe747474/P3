@@ -4,6 +4,8 @@
 #include<fstream>
 #include <sys/socket.h>
 #include <vector>
+#include <cstring>
+
 #ifndef P3_SHAREDFUNCTIONS_H
 #define P3_SHAREDFUNCTIONS_H
 std::ofstream getRecord(std::string );
