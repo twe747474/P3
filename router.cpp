@@ -38,33 +38,35 @@ void createUDP(int portNumber , router &r)
     myFile<<"Creating udp "<<endl;
     int udpPort = portNumber + 100;
     r.setUDP(udpPort);
-    struct addrinfo hints, *res;
-    int result , b = 0;
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
-    int opt =1;
-    memset(&hints, 0, sizeof hints);
-    if((getaddrinfo("127.0.0.1",std::to_string(udpPort).c_str(), &hints, &res)) == -1 )
-    {
-        printf("something went wrong with status()! %s\n", strerror(errno));
+    struct sockaddr_in myaddr;      /* our address */
+    struct sockaddr_in remaddr;     /* remote address */
+    socklen_t addrlen = sizeof(remaddr);/* length of addresses */
+    int fd;                         /* our socket */
+    /* create a UDP socket */
+    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("cannot create socket\n");
+
     }
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if(sock == -1)
-    {
-        printf("something failed with socket():::  %s\n", strerror(errno));
-    }
-    if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 )
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 100000;
+    if(setsockopt(fd, SOL_SOCKET,  SO_RCVTIMEO, (char *)&tv, sizeof(tv)) < 0 )
     {
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
-    if((b = bind(sock, res->ai_addr, res->ai_addrlen)) == -1)
-    {
-        printf(" something went wrong with bind()! %s\n", strerror(errno));
+    /* bind the socket to any valid IP address and a specific port */
+    memset((char *)&myaddr, 0, sizeof(myaddr));
+    myaddr.sin_family = AF_INET;
+    // myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    myaddr.sin_port = htons(udpPort);
 
+    if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0)
+    {
+        perror("bind failed");
     }
-    r.setSocket(sock);
-    myFile<<"UDP created PortNumber: "<<udpPort<<"Socket:: "<<sock<<endl;
+    r.setSocket(fd);
+    myFile<<"UDP created PortNumber: "<<udpPort<<"Socket:: "<<fd<<endl;
     //close(sock);
 }
 
@@ -159,55 +161,105 @@ void digestMessage(std::string message, router &r , int sd)
         //wait for next step from manager.
         Wait(sd,r);
     }
-    //manager will tell router to go and listen for its neighbors.
+    //go live message from router.
     else if(brokePacket.at(0) == "2")
     {
         string message ="3|Signed|"+r.getHome();
         sendAll(sd , message, r.getName());
+
         Wait(r.getTCPsocket() , r);
 
     }
-     //check and connect.
-    else if(brokePacket.at(0) == "3")
-    {
-        string message ="3|Signed|"+r.getHome();
-        sendAll(sd , message, r.getName());
-    }
-     //hello message from router....
+     //ack 4%ack%fromWho%inRegards
     else if(brokePacket.at(0) == "4")
     {
-
+        updateAck(brokePacket.at(1) , brokePacket.at(2));
     }
-     //hello back from neigbor
+     //packet
     else if(brokePacket.at(0) == "5")
     {
 
     }
 
 }
+void updateAck(string fromWho , string inRegards)
+{
+
+}
 void meetNeigbors(router &r)
 {
     int tempSd;
-    struct sockaddr_in address , serv_addr;
-    socklen_t addr_size;
-    serv_addr.sin_family = AF_INET;
-    std::string packet;
+
     for(neighbor &n :r.getNeighbor())
     {
-        serv_addr.sin_port = htons(n.port);
-        if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) == -1)
+        while(!sendDataGram(n.port,createDataGram(r),r))
         {
-            cout << "\nInvalid address/ Address not supported \n" << endl;
 
         }
-        std::string packet = "3%hello%"+r.getName();
-//        if((tempSd = sendto(r.getUdpSocket(),packet.c_str(), strlen(packet), 0,(struct sockaddr *) &address,(int)sizeof(address))) != -1)
-//        {
-//            perror("sendto failed");
-//        }
 
     }
     Wait(r.getTCPsocket(),r);
+}
+bool sendDataGram(int port , std::string packet , router &r )
+{
+    struct sockaddr_in address , serv_addr;
+    socklen_t addr_size;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) == -1)
+    {
+        cout << "\nInvalid address/ Address not supported \n" << endl;
+
+    }
+    if(sendto(r.getUdpSocket(), packet.c_str(), packet.size(), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr))!=packet.size())
+    {
+        perror("Mismatch in number of bytes sent");
+        exit(EXIT_FAILURE);
+    }
+    return waitForAck(port,r);
+}
+bool waitForAck(int port ,router &r)
+{
+    struct sockaddr_in remaddr;
+    socklen_t addrlen = sizeof(remaddr);
+    char ackBuffer[128];
+    if(recvfrom(r.getUdpSocket(), ackBuffer, 128, 0, (struct sockaddr *)&remaddr, &addrlen) < 0)
+    {
+        return false;
+    }
+    else
+        return true;
+
+}
+
+
+string createDataGram(router &r)
+{
+    string packet = "%4%";
+    for(neighbor nac : r.getNeighbor())
+    {
+        packet.append(std::to_string(nac.address)+"|");
+        packet.append(std::to_string(nac.port)+"|");
+        packet.append((std::to_string(nac.cost))+'%');
+    }
+    packet.append(r.getHome() + "%");
+    return packet;
+}
+void listenMode(router &r)
+{
+    int recvlen;
+    struct sockaddr_in remaddr;     /* remote address */
+    socklen_t addrlen = sizeof(remaddr);
+    char buf[1024];
+    for (;;) {
+
+        recvlen = recvfrom(r.getUdpSocket(), buf, 1024, 0, (struct sockaddr *)&remaddr, &addrlen);
+        printf("received %d bytes\n", recvlen);
+        if (recvlen > 0) {
+            buf[recvlen] = 0;
+            digestMessage(buf , r , r.getUdpSocket());
+        }
+    }
 }
 
 //interchangable socket descriptor.

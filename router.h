@@ -138,6 +138,10 @@ public:
     }
 
 };
+std::string createDataGram(router &r);
+void updateAck(std::string, std::string);
+bool waitForAck(int , router &);
+bool sendDataGram(int , std::string , router &);
 void openAndListen(router &);
 void meetNeigbors(router &);
 void digestMessage( std::string, router & , int);
@@ -146,4 +150,5 @@ void createUDP(int , router &);
 void Wait(int, router &);
 void WaitForNeighbors(int , router &);
 void createFwdTable(router &);
+void listenMode(router &);
 #endif //P3_ROUTER_H
