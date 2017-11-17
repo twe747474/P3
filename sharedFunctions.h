@@ -10,4 +10,5 @@ std::ofstream getRecord(std::string );
 int sendAll(int ,std::string, std::string);
 std::string handleIncomingMessage(int ,std::string);
 std::vector<std::string> splitString(std::string & , char );
+const std::string currentDateTime();
 #endif //P3_SHAREDFUNCTIONS_H
