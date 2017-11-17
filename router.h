@@ -39,10 +39,22 @@ class router{
     int managerTCP;
 
     lsp lspacket;
-    struct lspList {
+    struct lspList
+    {
         std::vector<struct lsp> lsps;
     } lspackets;
-    std::map<int,int> fwdTable; //<dest,adjacentNode>   NOTE: if adjacentNode is this router then dest is connected to this router, send direct to dest
+    std::map<int,int> fwdTable; //<dest,adjacentNode>
+    struct ack
+    {
+        int srcRouter;
+        std::string packet;
+        bool received;
+    };
+    typedef std::vector<struct ack> ackSet;
+    typedef std::map<int, ackSet> ackMap;
+    ackMap aMap;
+
+
 
 
 public:
@@ -136,7 +148,11 @@ public:
     {
         return lspacket;
     }
-
+    void addAck(int router, struct ack tmp)
+    {
+        aMap[router].push_back(tmp);
+    }
+    
 };
 void openAndListen(router &);
 void meetNeigbors(router &);
