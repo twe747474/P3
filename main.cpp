@@ -12,7 +12,6 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include "sharedFunctions.h"
-
 using namespace std;
 void openFileR(string &fileName , manager &m)
 {

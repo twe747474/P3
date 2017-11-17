@@ -372,3 +372,17 @@ void updateFwdTable(map<int,int> &tmpFwdTable, router &r){
     }
     r.setFwdTable(fwdTable);
 }
+
+void floodNetwork(std::string packet, router &r, int src)
+{
+    //receives packet and needs to forward to all neighbors except src
+    //r.addAck(stoi(r.getName()), src, packet);
+    vector<neighbor> neighbors;
+    neighbors = r.getNeighbor();
+    for(auto it = neighbors.begin(); it != neighbors.end(); ++it){
+        if((*it).address != src) {
+            r.addAck(((*it).address), src, packet);
+            sendDataGram((*it).port, packet, r);
+        }
+    }
+}
