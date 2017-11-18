@@ -200,8 +200,7 @@ void floodNetwork(std::string , router &, int);
 //resend all ack==false
 void fowardFlood(router &);
 void updateAck(std::string, std::string, router&);
-bool waitForAck(int , router &);
-bool sendDataGram(int , std::string , router &);
+void sendDataGram(int, std::string, router &);
 void openAndListen(router &);
 void digestMessage( std::string, router & , int);
 void createConnection(int , router &);

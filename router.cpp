@@ -168,7 +168,7 @@ void digestMessage(std::string message, router &r , int sd)
     {
         string message ="3|Signed|"+r.getHome();
         sendAll(sd , message, r.getName());
-        floodNetwork(r.getFowardingPacket() , r);
+        floodNetwork(r.getFowardingPacket() , r , stoi(r.getHome()));
         listenMode(r);
     }
      //ack 4%ack%fromWho%inRegards
@@ -186,15 +186,12 @@ void digestMessage(std::string message, router &r , int sd)
         //src of packet packet...
         brokePacket.erase(brokePacket.begin() + 0);
         int src = stoi(brokePacket.at(0));
+        myFile<<"Paring from:::: "<<src<<endl;
         parseAndAdd(brokePacket, r);
         std::string newMessage = "5%"+r.getHome() +"%" + message;
-        floodNetwork(message,r);
+        floodNetwork(message,r,src);
 
     }
-
-}
-void floodNetwork(std::string packet , router &r)
-{
 
 }
 
@@ -227,14 +224,24 @@ void parseAndAdd(vector<string> packet, router &r)
         l.src = stoi(packet.at(0));
         std::vector<string> brokePacket;
         packet.erase(packet.begin() + 0);
+        std::ofstream myFile = getRecord(r.getName());
         for (string s:packet) {
             brokePacket = splitString(s, '|');
             //address = src
-            n.address = l.src;
-            //port = dest
-            n.port = stoi(brokePacket.at(0));
-            n.cost = stoi(brokePacket.at(1));
-            l.neighbors.push_back(n);
+
+            if(r.getHome() != brokePacket.at(0)) {
+                myFile<<" Parsing and adding ::  "<<endl <<"source:: "<<l.src
+                                                       <<endl<<
+                      "dest:: "<<stoi(brokePacket.at(0))<<
+                      endl<<
+                      "cost:: "<<
+                               stoi(brokePacket.at(2))<<endl;
+                n.address = l.src;
+                //port = dest
+                n.port = stoi(brokePacket.at(0));
+                n.cost = stoi(brokePacket.at(2));
+                l.neighbors.push_back(n);
+            }
         }
         r.addLSP(l);
     }
@@ -243,20 +250,25 @@ void parseAndAdd(vector<string> packet, router &r)
 //to::do need to see if we have already have data.
 bool checkTable(std::string src , router &r)
 {
+    std::ofstream myFile = getRecord(r.getName());
+    myFile<<currentDateTime()<<" Checking table for ack! "<<endl;
     vector<lsp> tmp = r.getLSPlist().lsps;
     for(lsp l : tmp)
     {
         if(std::to_string(l.src) == src)
         {
+            myFile<<currentDateTime()<<" returning true "<<endl;
             return true;
         }
     }
-
+    myFile<<currentDateTime()<<" returning false "<<endl;
     return false;
 
 }
-bool sendDataGram(int port , std::string packet , router &r )
+void sendDataGram(int port, std::string packet, router &r)
 {
+    std::ofstream myFile = getRecord(r.getName());
+    myFile<<currentDateTime()<<":::: Sending datagram to:: " <<port<<" "<<packet<<endl;
     sockaddr_in servaddr;
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(port);
@@ -269,23 +281,7 @@ bool sendDataGram(int port , std::string packet , router &r )
         perror("sendto failed");
     }
 
-    return waitForAck(port,r);
 }
-//only needs to be used for tcp connection
-bool waitForAck(int port ,router &r)
-{
-    struct sockaddr_in remaddr;
-    socklen_t addrlen = sizeof(remaddr);
-    char ackBuffer[128];
-    if(recvfrom(r.getUdpSocket(), ackBuffer, 128, 0, (struct sockaddr *)&remaddr, &addrlen) < 0)
-    {
-        return false;
-    }
-    else
-        return true;
-
-}
-
 
 string createFowardingPacket(router &r)
 {
@@ -297,7 +293,9 @@ string createFowardingPacket(router &r)
         packet.append(std::to_string(nac.port)+"|");
         packet.append((std::to_string(nac.cost))+'%');
     }
-    packet.append(r.getHome() + "%");
+
+    std::ofstream myFile = getRecord(r.getName());
+    myFile<<currentDateTime()<<"::: This is out packet that we foward:: "<<packet<<endl;
     return packet;
 }
 void listenMode(router &r)
