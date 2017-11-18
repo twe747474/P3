@@ -195,6 +195,7 @@ public:
     }
 };
 std::string createFowardingPacket(router &r);
+std::string createAckPack(int  , router & );
 //floods network with given packet.
 void floodNetwork(std::string , router &, int);
 //resend all ack==false

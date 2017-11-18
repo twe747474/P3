@@ -190,9 +190,15 @@ void digestMessage(std::string message, router &r , int sd)
         parseAndAdd(brokePacket, r);
         std::string newMessage = "5%"+r.getHome() +"%" + message;
         floodNetwork(message,r,src);
+        sendDataGram(r.getNeighbor().at(src).port , createAckPack(src , r), r);
 
     }
 
+
+}
+string createAckPack(int src , router &r )
+{
+    return "4%" + r.getHome() + "%" + std::to_string(src);
 }
 
 void fowardFlood(router &r)

@@ -33,7 +33,7 @@ class manager
     vector<int> routersSockets;
     fd_set readfds;
     vector<routesAndNeighbors> topology;
-
+    int* readyRouter;
 
 public:
     void pushRouter(routes r)
@@ -47,6 +47,8 @@ public:
     void setRouter(int count)
     {
         numberOfRouters = count;
+        readyRouter = new int[count];
+
     }
     void pushRouterSockets(int socket)
     {
@@ -56,6 +58,10 @@ public:
     void pushNeighbors(routesAndNeighbors r)
     {
         topology.push_back(r);
+    }
+    void pushReadyRouter(int router)
+    {
+
     }
     int topologySize()
     {
