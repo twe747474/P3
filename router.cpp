@@ -188,12 +188,26 @@ void digestMessage(std::string message, router &r , int sd)
         int src = stoi(brokePacket.at(0));
         myFile<<"Paring from:::: "<<src<<endl;
         parseAndAdd(brokePacket, r);
-        std::string newMessage = "5%"+r.getHome() +"%" + message;
+        std::string newMessage = "6%"+r.getHome() +"%" + message;
         floodNetwork(message,r,src);
         sendDataGram(r.getNeighbor().at(src).port , createAckPack(src , r), r);
 
     }
+        //6%thisRouter%
+    else if(brokePacket.at(0) == "6")
+    {
+        brokePacket.erase(brokePacket.begin() + 0);
+        int neighbor = stoi(brokePacket.at(1));
+        int src = stoi(brokePacket.at(0));
+        myFile << currentDateTime() << " got a packet from " << src << "forwarding packet to neighbors";
+        string newMessage = "6%" + r.getHome() + "%" + stoi(brokePacket.at(1)) +"%" + stoi(brokePacket.at(2));
+        sendDataGram(r.getNeighbor().at(src).port , createAckPack(src , r), r);
+        if(parseAndAdd(brokePacket, r))
+        {
+            floodNetwork(newMessage, r, src);
+        }
 
+    }
 
 }
 string createAckPack(int src , router &r )
