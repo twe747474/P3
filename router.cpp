@@ -187,6 +187,7 @@ void digestMessage(std::string message, router &r , int sd)
         brokePacket.erase(brokePacket.begin() + 0);
         int src = stoi(brokePacket.at(0));
         myFile<<"Paring from:::: "<<src<<endl;
+
         if(parseAndAdd(brokePacket, r))
         {
             myFile << "Fwd to neighbors " << endl;
@@ -196,7 +197,21 @@ void digestMessage(std::string message, router &r , int sd)
         sendDataGram(r.getNeighbor().at(src).port , createAckPack(src , r), r);
 
     }
+        //6%thisRouter%
+    else if(brokePacket.at(0) == "6")
+    {
+        brokePacket.erase(brokePacket.begin() + 0);
+        int neighbor = stoi(brokePacket.at(1));
+        int src = stoi(brokePacket.at(0));
+        myFile << currentDateTime() << " got a packet from " << src << "forwarding packet to neighbors";
+        string newMessage = "6%" + r.getHome() + "%" + (brokePacket.at(1)) +"%" + (brokePacket.at(2));
+        sendDataGram(r.getNeighbor().at(src).port , createAckPack(src , r), r);
+        if(parseAndAdd(brokePacket, r))
+        {
+            floodNetwork(newMessage, r, src);
+        }
 
+    }
 
 }
 string createAckPack(int src , router &r )
@@ -253,10 +268,11 @@ bool parseAndAdd(vector<string> packet, router &r)
             }
             return true;
         }
-        return false;
-        r.addLSP(l);
-    }
 
+        r.addLSP(l);
+        
+    }
+    return false;
 }
 //to::do need to see if we have already have data.
 bool checkTable(std::string src , router &r)
