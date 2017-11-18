@@ -68,12 +68,13 @@ void openFileR(string &fileName , manager &m)
                 router.firstNode = stoi(brokenInfo.at(0));
                 nac.neighbor = router.secondNode = stoi(brokenInfo.at(1));
                 nac.cost = router.cost = stoi(brokenInfo.at(2));
+                nac.portNumber = 0;
                 ran.neighbors.push_back(nac);
                 m.pushRouter(router);
             }
         }
     }
-    createTwoWay(m);
+   // createTwoWay(m);
 }
 void spawnRouters(int processCount , manager &m)
 {
@@ -164,13 +165,7 @@ int connectToRouter(int port)
                 FD_ZERO(&temp);
             }
         }
-        int counter = 0;
-        for (int k: m.getSockets())
-        {
-            giveNeighborHood(k, to_string(counter), m, counter);
-            counter++;
-        }
-        routerGoLive(m);
+
 
     }
     void routerGoLive(manager &m)
@@ -190,6 +185,10 @@ int connectToRouter(int port)
         for(neighborsAndCost nac : m.getTopolgy(router).neighbors)
         {
             packet.append(to_string(nac.neighbor)+"|");
+            if(nac.portNumber == 0)
+            {
+               nac.portNumber  = m.getTopolgy(nac.neighbor).myPort;
+            }
             packet.append(to_string(nac.portNumber)+"|");
             packet.append((to_string(nac.cost))+'%');
         }
@@ -198,7 +197,7 @@ int connectToRouter(int port)
         digestMessage(handleIncomingMessage(sd , "manager"), router , m);
     }
     //1=portNumber//2=Connection-up//-1failed//3=signature.
-    //packet:: 1|message|routerNumber
+    //packet:: 1|routerNumber
     void digestMessage(string message , int router , manager &m)
     {
         ofstream myFile = getRecord("manager");
@@ -209,38 +208,45 @@ int connectToRouter(int port)
             //expecting port
             myFile<<currentDateTime() << " " << sepMessage.at(1)<<endl;
             m.getTopolgy(router).myPort = stoi(sepMessage.at(1));
-            updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
+       //     updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
 
         }
+            //ready call from router
         else if(sepMessage.at(0) == "2")
         {
-            //to::do
+
         }
+            //signature
         else if(sepMessage.at(0) == "3")
         {
             //package signed.
             myFile<<currentDateTime() << " Packaged signed by:: "<<sepMessage.at(2)<<endl;
         }
-
-    }
-    void updateNeighborPorts(int router , int port , manager &m )
-    {
-        for (neighborsAndCost i : m.getTopolgy(router).neighbors)
+            //completed route packet fwd.
+        else if(sepMessage.at(0) == "4")
         {
-            int flag = false;
-            int t = i.neighbor;
-            for (neighborsAndCost &k : m.getTopolgy(i.neighbor).neighbors)
-            {
-                if (k.neighbor == router) {
-                    k.portNumber = port;
-                    flag = true;
-                    break;
 
-                }
-
-            }
         }
+
     }
+//    void updateNeighborPorts(int router , int port , manager &m )
+//    {
+//        for (neighborsAndCost i : m.getTopolgy(router).neighbors)
+//        {
+//            int flag = false;
+//            int t = i.neighbor;
+//            for (neighborsAndCost &k : m.getTopolgy(i.neighbor).neighbors)
+//            {
+//                if (k.neighbor == router) {
+//                    k.portNumber = port;
+//                    flag = true;
+//                    break;
+//
+//                }
+//
+//            }
+//        }
+//    }
    routesAndNeighbors findNeighbors(int router , manager &m)
    {
         neighborsAndCost nac1;
@@ -303,6 +309,17 @@ int main(int argc, char** argv)
     spawnRouters(m.getNumberOfRoutes() , m);
     cout<<"===================================>"<<endl;
     multiplex(m);
+    int counter = 0;
+    for (int k: m.getSockets())
+    {
+        giveNeighborHood(k, to_string(counter), m, counter);
+        counter++;
+    }
+    routerGoLive(m);
+    while(true)
+    {
+        multiplex(m);
+    }
     cout<<"=========================================================>"<<endl;
     cout<<"Finished"<<endl;
 //    for(int i = 0; i < m.topologySize();i++)
