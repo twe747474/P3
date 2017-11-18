@@ -187,9 +187,12 @@ void digestMessage(std::string message, router &r , int sd)
         brokePacket.erase(brokePacket.begin() + 0);
         int src = stoi(brokePacket.at(0));
         myFile<<"Paring from:::: "<<src<<endl;
-        parseAndAdd(brokePacket, r);
-        std::string newMessage = "5%"+r.getHome() +"%" + message;
-        floodNetwork(message,r,src);
+        if(parseAndAdd(brokePacket, r))
+        {
+            myFile << "Fwd to neighbors " << endl;
+            std::string newMessage = "6%" + r.getHome() + "%" + message.substr(2, message.size());
+            floodNetwork(message, r, src);
+        }
         sendDataGram(r.getNeighbor().at(src).port , createAckPack(src , r), r);
 
     }
@@ -221,7 +224,7 @@ void updateAck(string fromWho , string inRegards, router &r)
     int srcRouter = stoi(inRegards);
     r.updateAck(routerName, srcRouter);
 }
-void parseAndAdd(vector<string> packet, router &r)
+bool parseAndAdd(vector<string> packet, router &r)
 {
     if(!checkTable(packet.at(0) ,r ))
     {
@@ -248,7 +251,9 @@ void parseAndAdd(vector<string> packet, router &r)
                 n.cost = stoi(brokePacket.at(2));
                 l.neighbors.push_back(n);
             }
+            return true;
         }
+        return false;
         r.addLSP(l);
     }
 
