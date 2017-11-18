@@ -211,6 +211,6 @@ void WaitForNeighbors(int , router &);
 void createFwdTable(router &);
 void listenMode(router &);
 void updateFwdTable(std::map<int,int> &, router &);
-void parseAndAdd(std::vector<std::string>, router &);
+bool parseAndAdd(std::vector<std::string>, router &);
 bool checkTable(std::string , router &);
 #endif //P3_ROUTER_H
