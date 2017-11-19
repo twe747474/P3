@@ -146,7 +146,8 @@ int connectToRouter(int port)
 
     return socketfd;
 }
-    void multiplex(manager &m)
+
+void intialMultiplex(manager &m)
     {
         struct timeval tv;
         tv.tv_sec = 10;
@@ -175,6 +176,30 @@ int connectToRouter(int port)
             counter++;
         }
     }
+void multiplex1(manager &m)
+{
+    struct timeval tv;
+    tv.tv_sec = 10;
+    tv.tv_usec = 500000;
+    int t = 0;
+    int n = m.getSockets().at(m.getSockets().size() - 1) + 1;
+    fd_set temp;
+    for (int i : m.getSockets()) {
+        FD_SET(i, &temp);
+        int multiplexed = select(n, &temp, NULL, NULL, &tv);
+        if (multiplexed == -1) {
+            cout << "Select failed " << strerror(errno) << endl;
+        }
+        if (FD_ISSET(i, &temp))
+        {
+            digestMessage(handleIncomingMessage(i, "manager"), t, m);
+            //  usleep(100 * 1000);
+            t++;
+            FD_ZERO(&temp);
+        }
+    }
+
+}
     void routerGoLive(manager &m)
     {
 
@@ -218,6 +243,15 @@ int connectToRouter(int port)
             //ready call from router
         else if(sepMessage.at(0) == "2")
         {
+            myFile<<sepMessage.at(1)<<" Ready message "<<endl;
+            if(!m.readyRouterExist(stoi(sepMessage.at(1))))
+            {
+                m.pushReadyRouter(stoi(sepMessage.at(1)));
+            }
+            if(m.getReadyRouterSize() == m.getNumberOfRoutes())
+            {
+              sendReadyMessage(m);
+            }
 
         }
             //signature
@@ -232,6 +266,14 @@ int connectToRouter(int port)
 
         }
 
+    }
+    void sendReadyMessage(manager &m)
+    {   string readyMessage = "7%Go";
+        //may need to wait for ack idk.
+        for(int i : m.getSockets())
+        {
+            sendAll(i,readyMessage,"manager");
+        }
     }
     void updateNeighborPorts(int router , int port , manager &m )
     {
@@ -311,11 +353,11 @@ int main(int argc, char** argv)
     cout<<"=====================>"<<endl;
     spawnRouters(m.getNumberOfRoutes() , m);
     cout<<"===================================>"<<endl;
-    multiplex(m);
+    intialMultiplex(m);
     routerGoLive(m);
     while(true)
     {
-        multiplex(m);
+        multiplex1(m);
     }
     cout<<"=========================================================>"<<endl;
     cout<<"Finished"<<endl;
