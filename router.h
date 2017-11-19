@@ -38,7 +38,7 @@ class router{
     int udpSocket;
     int tcpSocket;
     int managerTCP;
-
+    bool tcpSent = false;
     lsp lspacket;
     struct lspList
     {
@@ -59,6 +59,18 @@ class router{
 
 
 public:
+    void tcpTrue()
+    {
+        tcpSent = true;
+    }
+    bool getTCPStatus()
+    {
+        return tcpSent;
+    }
+    void tcpFalse()
+    {
+        tcpSent = false;
+    }
     void setTCPsocket(int sd)
     {
         tcpSocket = sd;
@@ -205,10 +217,20 @@ public:
         tmp.received = false;
         return tmp;
     }
+    void clearAckTable()
+    {
+        //aMap.clear();
+       for(neighbor n : myNeighbors)
+       {
+           aMap[n.address].clear();
+       }
+
+    }
 };
 std::string createFowardingPacket(router &r);
 std::string createAckPack(int  , router & );
 //floods network with given packet.
+void checkTCP(router&);
 void floodNetwork(std::string , router &, int , int from = -1);
 //resend all ack==false
 void briefAckCheck(router &);
@@ -226,4 +248,5 @@ void listenMode(router &);
 void updateFwdTable(std::map<int,int> &, router &);
 bool parseAndAdd(std::vector<std::string>, router &);
 bool checkTable(std::string , router &);
+std::vector<neighbor> removeDuplicates(std::vector<neighbor> routingList);
 #endif //P3_ROUTER_H

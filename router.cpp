@@ -101,8 +101,8 @@ void createConnection(int portNumber , router &r)
         exit(EXIT_FAILURE);
     }
     struct timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 100000;
+    tv.tv_sec = 0;
+    tv.tv_usec = 100;
     if(setsockopt(socketfd, SOL_SOCKET,  SO_RCVTIMEO, (char *)&tv, sizeof(tv)) < 0 )
     {
         perror("setsockopt");
@@ -243,7 +243,65 @@ void digestMessage(std::string message, router &r , int sd)
     else if(brokePacket.at(0) == "7")
     {
         myFile<<"Got go ahead from manager  "<<endl;
+        createFwdTable(r);
+        sendAll(r.getTCPsocket(), "5|"+r.getHome(),r.getName());
     }
+        //packet intial packer from manager
+    else if(brokePacket.at(0) == "8")
+    {
+        myFile<<currentDateTime()<<" Received packet from manager..."<<endl;
+        if(brokePacket.at(2) == r.getHome())
+        {   //this alerts manager that packet has been sent.
+            myFile<<currentDateTime()<<" Packet made it! Received packet from:: "<<brokePacket.at(1)<<endl;
+            sendAll(r.getTCPsocket(),"4|"+r.getHome() ,r.getName()) ;
+        }else
+        {
+            r.clearAckTable();
+            myFile<<currentDateTime()<<" Checking fwd table..... "<<endl;
+            int nextStep = r.getFwdTable().at(stoi(brokePacket.at(2)));
+            myFile<<currentDateTime()<<" fwd to:: "<<nextStep<<endl;
+            string fwdMessae = "9%" + r.getHome() + "%" + message.substr(2, message.length()) + "%";
+            r.addAck(nextStep , stoi(r.getHome()) , fwdMessae);
+            sendDataGram(r.getNeighBorsPort(nextStep), fwdMessae, r);
+        }
+
+    }
+    //fwd packet from manager 4%ack%fromWho%inRegards
+    else if(brokePacket.at(0) == "9")
+    {
+        myFile<<currentDateTime()<<": Received a packet from:: "<<brokePacket.at(1)<<endl;
+        r.clearAckTable();
+        string ack = "4%" +r.getHome() + "%" +brokePacket.at(1) + "%------------------------------------------";
+        //this sends an ack/.
+        sendDataGram(r.getNeighBorsPort(stoi(brokePacket.at(1))) , ack,r);
+        if(brokePacket.at(3) == r.getHome())
+        {   //this alerts manager that packet has been sent.
+            myFile<<currentDateTime()<<" Packet made it! Received packet from:: "<<brokePacket.at(2)<<endl;
+            sendAll(r.getTCPsocket(),"4|"+r.getHome() ,r.getName()) ;
+        }
+        else
+        {
+            myFile<<currentDateTime()<<" Checking fwd table..... "<<endl;
+            int nextStep = r.getFwdTable().at(stoi(brokePacket.at(2)));
+            myFile<<currentDateTime()<<" fwd to:: "<<nextStep<<endl;
+            string fwdMessae = "9%" +r.getHome() +"%"  +message.substr(4,message.size());
+            r.addAck(nextStep , stoi(r.getHome()) , fwdMessae);
+            sendDataGram(r.getNeighBorsPort(nextStep) , fwdMessae , r);
+
+        }
+    }
+    else if(brokePacket.at(0) == "0")
+    {
+        //killll
+        myFile<<"Received kill message from manager "<<endl;
+        myFile<<"Cleaning up........";
+        close(r.getUdpSocket());
+        close(r.getTCPsocket());
+        myFile<<"Looks like my time is up bye"<<endl;
+        pthread_cancel(pthread_self());
+        usleep(100000);
+    }
+
 
 }
 string createAckPack(int src , router &r )
@@ -259,7 +317,7 @@ void fowardFlood(router &r)
        {
            if(r.getAck(n.address).at(i).received == false)
            {
-               sendDataGram(r.getUDPPort() ,r.getAck(n.address).at(i).packet , r );
+               sendDataGram(r.getNeighBorsPort(n.address) ,r.getAck(n.address).at(i).packet , r );
                briefAckCheck(r);
            }
 
@@ -396,18 +454,24 @@ void listenMode(router &r)
     bool tcpSent = false;
     for (;;) {
 
-        if(tcpSent)
+        if(r.getTCPStatus())
         {
             //listen for tcp as well...
-            Wait(r.getTCPsocket() , r);
+           checkTCP(r);
 
         }
         recvlen = recvfrom(r.getUdpSocket(), buf, 65536, 0, (struct sockaddr *)&remaddr, &addrlen);
-        if (recvlen > 0 && !tcpSent) {
+        if (recvlen > 0 ) {
             buf[recvlen] = 0;
             myFile<<"Bits from listen mode :: "<<recvlen<<endl;
             digestMessage(buf , r , r.getUdpSocket());
             usleep(100 * 1000);
+        }
+        if(r.getTCPStatus())
+        {
+            //listen for tcp as well...
+            checkTCP(r);
+
         }
         else
         {
@@ -432,6 +496,7 @@ void listenMode(router &r)
                 string message = "2|" +r.getHome();
                 sendAll(r.getTCPsocket() , message, r.getName());
                 tcpSent = true;
+                r.tcpTrue();
             }
             fowardFlood(r);
 
@@ -439,7 +504,29 @@ void listenMode(router &r)
         }
     }
 }
+void checkTCP(router &r)
+{
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 100;
+    fd_set temp;
+    FD_SET(r.getTCPsocket(), &temp);
+    char buffer[1024];
+    memset(buffer,0,1024);
+    int multiplexed = select(r.getTCPsocket()+1, &temp, NULL, NULL, &tv);
+    if (multiplexed == -1) {
+        cout << "Select failed " << strerror(errno) << endl;
+    }
+    if (FD_ISSET(r.getTCPsocket(), &temp))
+    {
+        recv(r.getTCPsocket(),buffer,1024,0);
+       digestMessage(buffer,r,r.getTCPsocket());
+        //  usleep(100 * 1000);
 
+        FD_ZERO(&temp);
+    }
+
+}
 //interchangable socket descriptor.
 void Wait(int sd, router &r)
 {
@@ -452,52 +539,64 @@ void Wait(int sd, router &r)
     {
         myFile<<"shit wasnt sent"<<endl;
     }
+    else if(valread == -1)
+    {
+
+    }
     else
     {
         digestMessage(buffer,r,sd);
     }
+
 }
 
 void createFwdTable(router &r) {
     std::vector<struct lsp> lspList = r.getLSPlist().lsps;
     std::vector<neighbor> routingList;
+    std::ofstream myFile = getRecord(r.getName());
     //add its own list to the routing list
-    for (auto it = r.getNeighbor().begin(); it != r.getNeighbor().end(); ++it) {
-        routingList.push_back(*it);
+    neighbor temp;
+    for (auto it :  r.getNeighbor())
+    {
+        temp.address = stoi(r.getHome());
+        temp.port = it.address;
+        temp.cost = it.cost;
+        routingList.push_back(temp);
     }
     //add all other neighbors lsps to list
-    for (auto it = lspList.begin(); it != lspList.end(); ++it){
-        for(auto it2 = (*it).neighbors.begin(); it2 != (*it).neighbors.end(); ++it2){
-            routingList.push_back(*it2);
+    for (auto it : lspList){
+        for(auto it2 : (it).neighbors){
+            routingList.push_back(it2);
         }
     }
     std::vector<neighbor> newRoutingList = removeDuplicates(routingList);
     Graph g(r.getNumRouters());
 
-    for(auto it = routingList.begin(); it != routingList.end(); ++it){
+    for(neighbor it: routingList){
         //    cout << "src: " << (*it).src << " dest: " << (*it).dest << " weight: " << (*it).weight << endl;
-        g.addEdge((*it).address, (*it).port, (*it).cost);
+        g.addEdge((it).address, (it).port, (it).cost);
     }
 
-    g.shortestPath(stoi(r.getName()));
+    g.shortestPath(stoi(r.getHome()));
     r.setFwdTable(*g.getFwdTable());
 
     map<int,int> fwdTable;
     fwdTable = r.getFwdTable();
-    for(auto it = fwdTable.begin(); it != fwdTable.end(); ++it){
-            cout << (*it).first << ":" << (*it).second << endl; //dest, neighbor
+    for(auto it : fwdTable){
+            myFile << (it).first << ":" << (it).second << endl; //dest, neighbor
     }
     updateFwdTable(fwdTable, r);
 }
 
-std::vector<neighbor> removeDuplicates(std::vector<neighbor> routingList){
+    std::vector<neighbor> removeDuplicates(std::vector<neighbor> routingList){
     std::vector<neighbor> newRoutingList;
     bool contains = false;
     //at this point routingList has both 1->2 and 2->1, need to remove one copy of this
-    for(auto it = routingList.begin(); it != routingList.end(); ++it){
+    for(neighbor &i : routingList)
+    {
         contains = false;
-        for(auto it2 = newRoutingList.begin(); it2 != newRoutingList.end(); ++it){
-            if((*it).address == (*it2).port && (*it).port == (*it2).address)
+        for(neighbor &n : newRoutingList){
+            if(i.address == n.port && i.port == n.address)
             {
                 contains = true;
                 break;
@@ -505,7 +604,7 @@ std::vector<neighbor> removeDuplicates(std::vector<neighbor> routingList){
         }
         if(!contains)
         {
-            newRoutingList.push_back((*it));
+            newRoutingList.push_back(i);
         }
     }
     return newRoutingList;
@@ -517,11 +616,11 @@ void updateFwdTable(map<int,int> &tmpFwdTable, router &r)
     int destNode;
     int currNode;
     int tmp;
-    int routerName = stoi(r.getName());
-    for(auto it = tmpFwdTable.begin(); it != tmpFwdTable.end(); ++it){
-        if((*it).second != routerName) {
-            destNode = (*it).first;
-            currNode = (*it).second;
+    int routerName = stoi(r.getHome());
+    for(auto it : tmpFwdTable){
+        if((it).second != routerName) {
+            destNode = (it).first;
+            currNode = (it).second;
             while (currNode != routerName) {
                 tmp = currNode;
                 currNode = tmpFwdTable[currNode];
@@ -529,7 +628,7 @@ void updateFwdTable(map<int,int> &tmpFwdTable, router &r)
             fwdTable[destNode] = tmp;
         }
         else{
-            fwdTable[(*it).first] = (*it).first;
+            fwdTable[(it).first] = (it).first;
         }
     }
     r.setFwdTable(fwdTable);
@@ -542,13 +641,13 @@ void floodNetwork(std::string packet, router &r, int src , int from )
     std::ofstream myFile = getRecord(r.getName());
     vector<neighbor> neighbors;
     neighbors = r.getNeighbor();
-    for(auto it = neighbors.begin(); it != neighbors.end(); ++it){
-        if((*it).address != src && from != (*it).address) {
+    for(auto it : neighbors){
+        if((it).address != src && from != (it).address) {
 
-                r.addAck(((*it).address), src, packet);
-                myFile << currentDateTime() << " flood network: about to send port" << (*it).port << " packet: "
+                r.addAck(((it).address), src, packet);
+                myFile << currentDateTime() << " flood network: about to send port" << (it).port << " packet: "
                        << packet;
-                sendDataGram((*it).port, packet, r);
+                sendDataGram((it).port, packet, r);
                 briefAckCheck(r);
 
         }

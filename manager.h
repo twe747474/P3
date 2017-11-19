@@ -8,7 +8,7 @@ using std::vector;
 #ifndef P3_MANAGER_H
 using std::pair;
 #define P3_MANAGER_H
-struct routes
+struct routers
 {
     int firstNode;
     int secondNode;
@@ -28,19 +28,24 @@ struct routesAndNeighbors{
 
 class manager
 {
-    vector<routes> allRoutes;
+    vector<routers> allRoutes;
     int numberOfRouters;
     vector<int> routersSockets;
     fd_set readfds;
     vector<routesAndNeighbors> topology;
     vector<int> readyRouters;
+    vector<std::string> packetInstructions;
 
 public:
-    void pushRouter(routes r)
+    void pushPackets(std::string test)
+    {
+        packetInstructions.push_back(test);
+    }
+    void pushRouter(routers r)
     {
         allRoutes.push_back(r);
     }
-    vector<routes> getRouters()
+    vector<routers> getRouters()
     {
         return allRoutes;
     }
@@ -98,9 +103,14 @@ public:
     {
         return numberOfRouters;
     }
+    std::vector<std::string>& getPackets()
+    {
+        return packetInstructions;
+    }
 
 
 };
+void potentialKill(manager &  );
 void sendReadyMessage(manager &);
 void multiplex1(manager &);
 void createTwoWay(manager &);
