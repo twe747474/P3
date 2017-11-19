@@ -460,32 +460,27 @@ void Wait(int sd, router &r)
 
 void createFwdTable(router &r) {
     std::vector<struct lsp> lspList = r.getLSPlist().lsps;
-    //(Destination, Cost, NextHop) - (int, int, int)
-
     std::vector<neighbor> routingList;
-    Graph g(r.getNumRouters());
-
-
-    /*
-     //add its own list to the routing list - don't think I need for implentation of Dikjstra. Other lsp's have dest of this router
-     for (auto it = r.neighbors.begin(); it != r.neighbors.end(); ++it) {
-         routingList.push_back(*it);
-     }
-     */
+    //add its own list to the routing list
+    for (auto it = r.getNeighbor().begin(); it != r.getNeighbor().end(); ++it) {
+        routingList.push_back(*it);
+    }
+    //add all other neighbors lsps to list
     for (auto it = lspList.begin(); it != lspList.end(); ++it){
         for(auto it2 = (*it).neighbors.begin(); it2 != (*it).neighbors.end(); ++it2){
             routingList.push_back(*it2);
         }
     }
+    std::vector<neighbor> newRoutingList = removeDuplicates(routingList);
+    Graph g(r.getNumRouters());
 
     for(auto it = routingList.begin(); it != routingList.end(); ++it){
         //    cout << "src: " << (*it).src << " dest: " << (*it).dest << " weight: " << (*it).weight << endl;
         g.addEdge((*it).address, (*it).port, (*it).cost);
     }
 
-    g.shortestPath(stoi(r.getName()));  //FIXME was 2, should be src node aka stoi(r.getName()) ?
+    g.shortestPath(stoi(r.getName()));
     r.setFwdTable(*g.getFwdTable());
-
 
     map<int,int> fwdTable;
     fwdTable = r.getFwdTable();
@@ -493,7 +488,27 @@ void createFwdTable(router &r) {
             cout << (*it).first << ":" << (*it).second << endl; //dest, neighbor
     }
     updateFwdTable(fwdTable, r);
+}
 
+std::vector<neighbor> removeDuplicates(std::vector<neighbor> routingList){
+    std::vector<neighbor> newRoutingList;
+    bool contains = false;
+    //at this point routingList has both 1->2 and 2->1, need to remove one copy of this
+    for(auto it = routingList.begin(); it != routingList.end(); ++it){
+        contains = false;
+        for(auto it2 = newRoutingList.begin(); it2 != newRoutingList.end(); ++it){
+            if((*it).address == (*it2).port && (*it).port == (*it2).address)
+            {
+                contains = true;
+                break;
+            }
+        }
+        if(!contains)
+        {
+            newRoutingList.push_back((*it));
+        }
+    }
+    return newRoutingList;
 }
 
 void updateFwdTable(map<int,int> &tmpFwdTable, router &r)
