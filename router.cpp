@@ -100,6 +100,14 @@ void createConnection(int portNumber , router &r)
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 100000;
+    if(setsockopt(socketfd, SOL_SOCKET,  SO_RCVTIMEO, (char *)&tv, sizeof(tv)) < 0 )
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
     if((b = bind(socketfd, res->ai_addr, res->ai_addrlen)) == -1)
     {
         printf(" something went wrong with bind()! %s\n", strerror(errno));
@@ -213,15 +221,16 @@ void digestMessage(std::string message, router &r , int sd)
     else if(brokePacket.at(0) == "6")
     {
         vector<string> newBrokePacket(brokePacket.begin()+1, brokePacket.end());
-        int neighbor  = stoi(brokePacket.at(2));
-        int src = stoi(brokePacket.at(1));
+        int neighbor  = stoi(newBrokePacket.at(1));
+        int src = stoi(newBrokePacket.at(0));
         sendDataGram(r.getNeighBorsPort(src), createAckPack(neighbor, r), r);
         if(neighbor != stoi(r.getHome()))
         {
             myFile << currentDateTime() << " got a packet from " << src << "forwarding packet to neighbors";
             string newMessage = "6%" + r.getHome()  +"%" + message.substr(4,message.size());
             if (parseAndAdd(newBrokePacket, r)) {
-                floodNetwork(newMessage, r, src ,  stoi(newBrokePacket.at(2)));
+                //if you break shit look here
+                floodNetwork(newMessage, r, src ,  stoi(newBrokePacket.at(1)));
             }
         }
         else
@@ -229,6 +238,11 @@ void digestMessage(std::string message, router &r , int sd)
          myFile<<"Resent ack to "<<src<<endl;
         }
 
+    }
+        //7%Go
+    else if(brokePacket.at(0) == "7")
+    {
+        myFile<<"Got go ahead from manager  "<<endl;
     }
 
 }
@@ -379,11 +393,17 @@ void listenMode(router &r)
     char buf[65536];
     std::ofstream myFile = getRecord(r.getName());
     bool ifPrint = false;
+    bool tcpSent = false;
     for (;;) {
 
+        if(tcpSent)
+        {
+            //listen for tcp as well...
+            Wait(r.getTCPsocket() , r);
 
+        }
         recvlen = recvfrom(r.getUdpSocket(), buf, 65536, 0, (struct sockaddr *)&remaddr, &addrlen);
-        if (recvlen > 0) {
+        if (recvlen > 0 && !tcpSent) {
             buf[recvlen] = 0;
             myFile<<"Bits from listen mode :: "<<recvlen<<endl;
             digestMessage(buf , r , r.getUdpSocket());
@@ -406,9 +426,12 @@ void listenMode(router &r)
                 ifPrint = true;
             }
 
-            if(r.getLSPlist().lsps.size() == r.getNumRouters() -1 )
+            if(r.getLSPlist().lsps.size() == r.getNumRouters() -1  && !tcpSent)
             {
-
+                myFile<<currentDateTime()<<" Sending ready message "<<endl;
+                string message = "2|" +r.getHome();
+                sendAll(r.getTCPsocket() , message, r.getName());
+                tcpSent = true;
             }
             fowardFlood(r);
 

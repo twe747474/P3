@@ -33,7 +33,7 @@ class manager
     vector<int> routersSockets;
     fd_set readfds;
     vector<routesAndNeighbors> topology;
-    int* readyRouter;
+    vector<int> readyRouters;
 
 public:
     void pushRouter(routes r)
@@ -47,8 +47,6 @@ public:
     void setRouter(int count)
     {
         numberOfRouters = count;
-        readyRouter = new int[count];
-
     }
     void pushRouterSockets(int socket)
     {
@@ -61,7 +59,22 @@ public:
     }
     void pushReadyRouter(int router)
     {
-
+       readyRouters.push_back(router);
+    }
+    bool readyRouterExist(int router)
+    {
+        for(int i : readyRouters)
+        {
+            if(i == router)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    int getReadyRouterSize()
+    {
+        return readyRouters.size();
     }
     int topologySize()
     {
@@ -88,6 +101,8 @@ public:
 
 
 };
+void sendReadyMessage(manager &);
+void multiplex1(manager &);
 void createTwoWay(manager &);
 void updateNeighborPorts(int,int , manager &);
 void digestMessage(std::string , int , manager &);
