@@ -157,6 +157,18 @@ public:
     {
         return lspacket;
     }
+    int getNeighBorsPort(int adddres)
+    {
+        for(neighbor n : myNeighbors)
+        {
+            if(n.address == adddres)
+            {
+                return n.port;
+            }
+
+        }
+        return -1;
+    }
     void addAck(int destRouter, int srcRouter, std::string packet)
     {
 
@@ -197,8 +209,9 @@ public:
 std::string createFowardingPacket(router &r);
 std::string createAckPack(int  , router & );
 //floods network with given packet.
-void floodNetwork(std::string , router &, int);
+void floodNetwork(std::string , router &, int , int from = -1);
 //resend all ack==false
+void briefAckCheck(router &);
 void fowardFlood(router &);
 void updateAck(std::string, std::string, router&);
 void sendDataGram(int, std::string, router &);
