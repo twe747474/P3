@@ -20,11 +20,12 @@ void openFileR(string &fileName , manager &m)
     string fileInfo;
     bool begin = true;
     vector<string> fileBroken;
-    routes router;
+    routers router;
     int previousNode = 0;
     routesAndNeighbors ran;
     neighborsAndCost nac;
     ran.home = 0;
+    bool packetIn = false;
     if(!inFile)
     {
         cout<<"File failed to open "<<fileName<<endl;
@@ -39,7 +40,18 @@ void openFileR(string &fileName , manager &m)
                 begin = false;
                 m.setRouter(stoi(fileInfo));
             }
-            else if(stoi(fileInfo) == -1)
+            else if (packetIn)
+            {
+               if(fileInfo == "-1")
+               {
+                   break;
+               }
+                std::vector<std::string> split = splitString(fileInfo , ' ');
+                std::string packet =  "8%" +split.at(0) +"%" +split.at(1);
+                m.pushPackets(packet);
+
+            }
+            else if(stoi(fileInfo) == -1 && !packetIn)
             {
                 m.pushNeighbors(ran);
                 if(m.topologySize() != m.getNumberOfRoutes())
@@ -49,9 +61,10 @@ void openFileR(string &fileName , manager &m)
                     routesAndNeighbors test =  findNeighbors(ran.home, m);
                     m.pushNeighbors(test);
                 }
-                break;
+                packetIn = true;
+
             }
-            else
+            else if(!packetIn)
             {
                 vector<string> brokenInfo = splitString(fileInfo , ' ');
                 int firstNode = stoi(brokenInfo.at(0));
@@ -251,7 +264,14 @@ void multiplex1(manager &m)
             if(m.getReadyRouterSize() == m.getNumberOfRoutes())
             {
               sendReadyMessage(m);
+              usleep(1000000);
+                std::string packet;
+                packet = m.getPackets().at(0);
+                int t = stoi(splitString(packet , '%').at(1));
+                m.getPackets().at(0) = "";
+                sendAll(m.getSockets().at(t) , packet , "manager");
             }
+
 
         }
             //signature
@@ -263,9 +283,57 @@ void multiplex1(manager &m)
             //completed route packet fwd.
         else if(sepMessage.at(0) == "4")
         {
+            myFile<<currentDateTime()<<"Routers finished  route:: "<<endl;
+            potentialKill(m);
+
+
+        }
+        else if(sepMessage.at(0) == "5")
+        {
+
 
         }
 
+    }
+    void potentialKill(manager & m )
+    {
+        std::ofstream myFile = getRecord("manager");
+        bool complete = false ;
+        if(m.getPackets().size() > 0)
+        {
+            std::string packet;
+            for(string &tk: m.getPackets())
+            {
+                if(tk != "")
+                {
+                    std::vector<string> s = splitString(tk,'%');
+                    int t = stoi(s.at(1));
+                 //   string instruction = s.at(0) + "%" + s.at(1) +"%" +s.at(2);
+                    sendAll(m.getSockets().at(t) , tk , "manager");
+//                    m.getPackets().erase(m.getPackets().begin() + 0);
+                    tk = "";
+                    complete = true;
+                }
+
+            }
+            if(!complete)
+            {
+                for(int i : m.getSockets())
+                {
+                    sendAll(i , "0%Kill" , "manager");
+                }
+                usleep (5000000 * 10);
+                for(int i : m.getSockets())
+                {
+                    close(i);
+                }
+                myFile<<"Complete "<<endl;
+                std::cout<<"==================================================>"<<endl;
+                cout<<"Finished"<<endl;
+                exit(0);
+            }
+
+        }
     }
     void sendReadyMessage(manager &m)
     {   string readyMessage = "7%Go";
@@ -355,9 +423,9 @@ int main(int argc, char** argv)
     cout<<"===================================>"<<endl;
     intialMultiplex(m);
     routerGoLive(m);
-    while(true)
+   while(true)
     {
-        multiplex1(m);
+       multiplex1(m);
     }
     cout<<"=========================================================>"<<endl;
     cout<<"Finished"<<endl;
