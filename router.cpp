@@ -143,6 +143,11 @@ void digestMessage(std::string message, router &r , int sd)
         for(std::string s: brokePacket)
         {
             brokeUp = splitString(s,'|');
+            if(brokeUp.size() == 1)
+            {
+                r.setNumRouters(stoi(brokeUp.at(0)));
+                break;
+            }
             n.address = stoi(brokeUp.at(0));
             n.port = stoi(brokeUp.at(1));
             n.cost = stoi(brokeUp.at(2));
@@ -195,7 +200,7 @@ void digestMessage(std::string message, router &r , int sd)
         {
             std::string newMessage = "6%" + r.getHome() + "%" + message.substr(2, message.size());
             myFile << " Fwd to neighbors " << newMessage << endl;
-            floodNetwork(newMessage, r, src , stoi(brokePacket.at(2)));
+            floodNetwork(newMessage, r, src );
         }
         else
         {
@@ -207,17 +212,16 @@ void digestMessage(std::string message, router &r , int sd)
         //6%thisRouter%
     else if(brokePacket.at(0) == "6")
     {
-        brokePacket.erase(brokePacket.begin() + 0);
-        brokePacket = brokePacket.su
-        int neighbor  = stoi(brokePacket.at(1));
-        int src = stoi(brokePacket.at(0));
-        sendDataGram(r.getNeighBorsPort(neighbor), createAckPack(src, r), r);
+        vector<string> newBrokePacket(brokePacket.begin()+1, brokePacket.end());
+        int neighbor  = stoi(brokePacket.at(2));
+        int src = stoi(brokePacket.at(1));
+        sendDataGram(r.getNeighBorsPort(src), createAckPack(neighbor, r), r);
         if(neighbor != stoi(r.getHome()))
         {
             myFile << currentDateTime() << " got a packet from " << src << "forwarding packet to neighbors";
-            string newMessage = "6%" + r.getHome() + "%" + (brokePacket.at(2)) + "%" + (brokePacket.at(3));
-            if (parseAndAdd(brokePacket, r)) {
-                floodNetwork(newMessage, r, src);
+            string newMessage = "6%" + r.getHome()  +"%" + message.substr(4,message.size());
+            if (parseAndAdd(newBrokePacket, r)) {
+                floodNetwork(newMessage, r, src ,  stoi(newBrokePacket.at(2)));
             }
         }
         else
@@ -310,6 +314,9 @@ bool checkTable(std::string src , router &r)
             return true;
         }
     }
+    if(src == "6"){
+
+    }
     myFile<<currentDateTime()<<" : does not exis exist from  " << src <<endl;
     return false;
 
@@ -371,6 +378,7 @@ void listenMode(router &r)
     socklen_t addrlen = sizeof(remaddr);
     char buf[65536];
     std::ofstream myFile = getRecord(r.getName());
+    bool ifPrint = false;
     for (;;) {
 
 
@@ -384,7 +392,26 @@ void listenMode(router &r)
         else
         {
             myFile<<"Foward flood from a timeout "<<endl;
+            if(!ifPrint){
+                myFile<<r.getNumRouters()<<endl;
+                for(lsp l : r.getLSPlist().lsps) {
+                    myFile << " src :: " << l.src << endl;
+                    for(neighbor n : l.neighbors){
+                        myFile<< "Address : " << n.port<<
+                              " "
+                              <<"cost "
+                              <<n.cost<<endl;
+                    }
+                }
+                ifPrint = true;
+            }
+
+            if(r.getLSPlist().lsps.size() == r.getNumRouters() -1 )
+            {
+                
+            }
             fowardFlood(r);
+
 
         }
     }
@@ -478,7 +505,7 @@ void floodNetwork(std::string packet, router &r, int src , int from )
     vector<neighbor> neighbors;
     neighbors = r.getNeighbor();
     for(auto it = neighbors.begin(); it != neighbors.end(); ++it){
-        if((*it).address != src && from != src) {
+        if((*it).address != src && from != (*it).address) {
 
                 r.addAck(((*it).address), src, packet);
                 myFile << currentDateTime() << " flood network: about to send port" << (*it).port << " packet: "

@@ -73,8 +73,11 @@ void openFileR(string &fileName , manager &m)
                 m.pushRouter(router);
             }
         }
+
     }
-   // createTwoWay(m);
+    int counter = 0;
+    createTwoWay(m);
+
 }
 void spawnRouters(int processCount , manager &m)
 {
@@ -165,8 +168,12 @@ int connectToRouter(int port)
                 FD_ZERO(&temp);
             }
         }
-
-
+        int counter = 0;
+        for (int k: m.getSockets())
+        {
+            giveNeighborHood(k, to_string(counter), m, counter);
+            counter++;
+        }
     }
     void routerGoLive(manager &m)
     {
@@ -185,13 +192,10 @@ int connectToRouter(int port)
         for(neighborsAndCost nac : m.getTopolgy(router).neighbors)
         {
             packet.append(to_string(nac.neighbor)+"|");
-            if(nac.portNumber == 0)
-            {
-               nac.portNumber  = m.getTopolgy(nac.neighbor).myPort;
-            }
             packet.append(to_string(nac.portNumber)+"|");
             packet.append((to_string(nac.cost))+'%');
         }
+        packet.append(to_string(m.getNumberOfRoutes()));
         sendAll(sd , packet , "manager");
         //wait for signature from router.
         digestMessage(handleIncomingMessage(sd , "manager"), router , m);
@@ -208,7 +212,7 @@ int connectToRouter(int port)
             //expecting port
             myFile<<currentDateTime() << " " << sepMessage.at(1)<<endl;
             m.getTopolgy(router).myPort = stoi(sepMessage.at(1));
-       //     updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
+            updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
 
         }
             //ready call from router
@@ -229,24 +233,23 @@ int connectToRouter(int port)
         }
 
     }
-//    void updateNeighborPorts(int router , int port , manager &m )
-//    {
-//        for (neighborsAndCost i : m.getTopolgy(router).neighbors)
-//        {
-//            int flag = false;
-//            int t = i.neighbor;
-//            for (neighborsAndCost &k : m.getTopolgy(i.neighbor).neighbors)
-//            {
-//                if (k.neighbor == router) {
-//                    k.portNumber = port;
-//                    flag = true;
-//                    break;
-//
-//                }
-//
-//            }
-//        }
-//    }
+    void updateNeighborPorts(int router , int port , manager &m )
+    {
+        for (neighborsAndCost i : m.getTopolgy(router).neighbors)
+       {
+           int flag = false;
+           int t = i.neighbor;
+            for (neighborsAndCost &k : m.getTopolgy(i.neighbor).neighbors)
+            {
+               if (k.neighbor == router) {
+                    k.portNumber = port;
+                    flag = true;
+                    break;
+
+              }
+            }
+        }
+    }
    routesAndNeighbors findNeighbors(int router , manager &m)
    {
         neighborsAndCost nac1;
@@ -309,12 +312,6 @@ int main(int argc, char** argv)
     spawnRouters(m.getNumberOfRoutes() , m);
     cout<<"===================================>"<<endl;
     multiplex(m);
-    int counter = 0;
-    for (int k: m.getSockets())
-    {
-        giveNeighborHood(k, to_string(counter), m, counter);
-        counter++;
-    }
     routerGoLive(m);
     while(true)
     {
