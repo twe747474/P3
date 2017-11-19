@@ -408,7 +408,7 @@ void listenMode(router &r)
 
             if(r.getLSPlist().lsps.size() == r.getNumRouters() -1 )
             {
-                
+
             }
             fowardFlood(r);
 
