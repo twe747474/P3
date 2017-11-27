@@ -26,6 +26,8 @@ void openFileR(string &fileName , manager &m)
     neighborsAndCost nac;
     ran.home = 0;
     bool packetIn = false;
+    ofstream myFile = getRecord("manager");
+    myFile<<currentDateTime()<<" TCP Server started parsing::"<<fileName<<endl;
     if(!inFile)
     {
         cout<<"File failed to open "<<fileName<<endl;
@@ -39,6 +41,7 @@ void openFileR(string &fileName , manager &m)
             {
                 begin = false;
                 m.setRouter(stoi(fileInfo));
+                myFile<<currentDateTime()<<" Number of routers:: "<<fileInfo<<endl;
             }
             else if (packetIn)
             {
@@ -94,9 +97,11 @@ void openFileR(string &fileName , manager &m)
 }
 void spawnRouters(int processCount , manager &m)
 {
-    int portNumber = 8080;
+    int portNumber = 15000;
     pthread_t thread_id;
     cout<<"Spawning routers.........."<<endl;
+    ofstream myFile = getRecord("manager");
+    myFile<<currentDateTime()<<" Spawning routers"<<endl;
     for(int i = 0; i < processCount; i++)
     {
         ++portNumber;
@@ -107,15 +112,15 @@ void spawnRouters(int processCount , manager &m)
         else
         {   //wait for child to get connection up and going before attempting to connect.
             usleep(100 * 10000);
-            m.pushRouterSockets(connectToRouter(portNumber));
+            m.pushRouterSockets(connectToRouter(portNumber , i) );
         }
 
     }
 }
-int connectToRouter(int port)
+int connectToRouter(int port , int router)
 {
     ofstream myfile = getRecord("manager");
-    myfile << currentDateTime() << " port " << port << endl;
+    myfile << currentDateTime() << " connecting to router:: " << router <<" on port:: " << port << endl;
     struct addrinfo hints, R,*res;
     int socketfd;
     struct sockaddr_in serv_addr;
@@ -149,7 +154,7 @@ int connectToRouter(int port)
         perror("client: connect");
     } else
         {
-            myfile << currentDateTime() << " connected!" << endl;
+            myfile << currentDateTime() << " tcp connection is up for routers "<<router << endl;
         }
     char incomingBuffer[1024];
     memset(incomingBuffer, 0, 1024);
@@ -219,9 +224,11 @@ void multiplex1(manager &m)
 }
     void routerGoLive(manager &m)
     {
-
+        ofstream myFile = getRecord("manager");
+        myFile << "\n" <<currentDateTime() << "SENDING ROUTER'S THEIR NEIGHBORS" << endl;
         for(int i = 0 ; i < m.getNumberOfRoutes() ; i++)
         {
+            myFile<<currentDateTime()<< " Sending packet to router:: "<<i<<endl;
             sendAll(m.getSockets().at(i) , "2%GoLive" , "manager");
             digestMessage(handleIncomingMessage(m.getSockets().at(i),"manager") , 0 , m);
 
@@ -230,6 +237,7 @@ void multiplex1(manager &m)
     //asignment packet:::alertNumber%routeAsign%firstNeighbor|port|cost%nNeigbor|nport...
     void giveNeighborHood(int sd , string assignmnet , manager &m , int router)
     {
+        ofstream myFile = getRecord("manager");
         string packet = "1%" + assignmnet  + "%";
         for(neighborsAndCost nac : m.getTopolgy(router).neighbors)
         {
@@ -237,9 +245,9 @@ void multiplex1(manager &m)
             packet.append(to_string(nac.portNumber)+"|");
             packet.append((to_string(nac.cost))+'%');
         }
+        myFile<<currentDateTime()<< " Sending packet to router:: "<<router<<endl;
         packet.append(to_string(m.getNumberOfRoutes()));
         sendAll(sd , packet , "manager");
-        //wait for signature from router.
         digestMessage(handleIncomingMessage(sd , "manager"), router , m);
     }
     //1=portNumber//2=Connection-up//-1failed//3=signature.
@@ -247,12 +255,12 @@ void multiplex1(manager &m)
     void digestMessage(string message , int router , manager &m)
     {
         ofstream myFile = getRecord("manager");
-        myFile<<currentDateTime() << " Digesting message from router:: "<< message <<endl;
+        myFile<<currentDateTime() << " Digesting message packet:: "<<message <<endl;
         vector<string> sepMessage = splitString(message , '|');
         if(sepMessage.at(0) == "1")
         {
             //expecting port
-            myFile<<currentDateTime() << " " << sepMessage.at(1)<<endl;
+            myFile<<currentDateTime() << " Router " << router << " at UDP Port " << sepMessage.at(1)<<endl;
             m.getTopolgy(router).myPort = stoi(sepMessage.at(1));
             updateNeighborPorts(router,stoi(sepMessage.at(1)),m);
 
@@ -260,7 +268,8 @@ void multiplex1(manager &m)
             //ready call from router
         else if(sepMessage.at(0) == "2")
         {
-            myFile<<currentDateTime()<<sepMessage.at(1)<<" Received ready message "<<endl;
+
+            myFile<<currentDateTime()<<sepMessage.at(1)<<" Received ready message from router "<< sepMessage.at(1)<<endl;
             if(!m.readyRouterExist(stoi(sepMessage.at(1))))
             {
                 m.pushReadyRouter(stoi(sepMessage.at(1)));
@@ -268,17 +277,10 @@ void multiplex1(manager &m)
             if(m.getReadyRouterSize() == m.getNumberOfRoutes())
             {
                 usleep(2000000 * m.getNumberOfRoutes());
-                myFile<<currentDateTime()<<" Sending ready message"<<endl;
+                myFile<<currentDateTime()<<" All ready messages received sending go message to all routers"<<endl;
                 sendReadyMessage(m);
-                usleep(1000000);
-                std::string packet;
-                packet = m.getPackets().at(0);
-                int t = stoi(splitString(packet , '%').at(1));
-                m.getPackets().at(0) = "";
-                cout<<"Sending first instruction........... "<<packet<<endl;
+                usleep(1000000 * m.getNumberOfRoutes());
 
-                myFile<<currentDateTime()<<" Sending first instruction:: "<< packet<<endl;
-                sendAll(m.getSockets().at(t) , packet , "manager");
             }
 
 
@@ -287,12 +289,12 @@ void multiplex1(manager &m)
         else if(sepMessage.at(0) == "3")
         {
             //package signed.
-            myFile<<currentDateTime() << " Packaged signed by:: "<<sepMessage.at(2)<<endl;
+            myFile<<currentDateTime() << " Router:: "<<sepMessage.at(2)<< " acknowledged it got its data" << endl;
         }
             //completed route packet fwd.
         else if(sepMessage.at(0) == "4")
         {
-            myFile<<currentDateTime()<<" Routers finished  route:: "<<endl;
+            myFile<<currentDateTime()<<" Received completion message from:: "<< sepMessage.at(1)<<endl;
             usleep(1000000);
             potentialKill(m);
 
@@ -300,7 +302,18 @@ void multiplex1(manager &m)
         }
         else if(sepMessage.at(0) == "5")
         {
-
+            myFile << currentDateTime() << " Router " << sepMessage.at(1) << " completed dijkstra" << endl;
+            m.addDijkstra();
+            if(m.getDijkstra() == m.getNumberOfRoutes())
+            {
+                std::string packet;
+                packet = m.getPackets().at(0);
+                int t = stoi(splitString(packet , '%').at(1));
+                m.getPackets().at(0) = "";
+                myFile<<currentDateTime()<<" Sending first instruction........... "<<packet<<endl;
+                cout<<"Sending first instruction........... "<<packet<<endl;
+                sendAll(m.getSockets().at(t) , packet , "manager");
+            }
 
         }
 
@@ -320,20 +333,24 @@ void multiplex1(manager &m)
                     int t = stoi(s.at(1));
                  //   string instruction = s.at(0) + "%" + s.at(1) +"%" +s.at(2);
                     cout<<"Sending next instruction"<<endl;
-                    myFile<<currentDateTime()<< " Sending next instruction "<<endl;
+                    myFile<<currentDateTime()<< " Sending next instruction to router:: "<<t<<endl;
                     sendAll(m.getSockets().at(t) , tk , "manager");
                     usleep(1000000);
 //                    m.getPackets().erase(m.getPackets().begin() + 0);
                     tk = "";
                     complete = true;
+                    break;
                 }
 
             }
             if(!complete)
             {
-                myFile<<currentDateTime()<<" Sending kill message "<<endl;
+                myFile<<currentDateTime()<<" Sending kill message to all routers "<<endl;
+                int routers = 0;
                 for(int i : m.getSockets())
                 {
+                    myFile<<currentDateTime()<<" Kill message sent to router "<<routers<<endl;
+                    routers++;
                     sendAll(i , "0%Kill" , "manager");
                 }
                 usleep (1000000 * m.getNumberOfRoutes());
@@ -341,7 +358,7 @@ void multiplex1(manager &m)
                 {
                     close(i);
                 }
-                myFile<<currentDateTime()<<" Complete "<<endl;
+                myFile<<currentDateTime()<<" 100 Hours later, simulation completed if this ain't an A I don't know what is..."<<endl;
                 std::cout<<"==================================================>"<<endl;
                 cout<<"Finished"<<endl;
                 exit(0);
@@ -352,8 +369,13 @@ void multiplex1(manager &m)
     void sendReadyMessage(manager &m)
     {   string readyMessage = "7%Go";
         //may need to wait for ack idk.
+        ofstream myFile = getRecord("manager");
+        int routers = 0;
         for(int i : m.getSockets())
         {
+
+            myFile<<currentDateTime()<<" Sending go message to routers:: "<<routers<<endl;
+            routers++;
             sendAll(i,readyMessage,"manager");
         }
     }
@@ -441,19 +463,5 @@ int main(int argc, char** argv)
     {
        multiplex1(m);
     }
-    cout<<"=========================================================>"<<endl;
-    cout<<"Finished"<<endl;
-//    for(int i = 0; i < m.topologySize();i++)
-//    {
-//        //giveNeighborHood(1,"2", m.getTopolgy(i)) ;
-//       cout<<"Home:: "<<m.getTopolgy(i).home<<endl;
-//        cout<<"MyPort:: "<<m.getTopolgy(i).myPort<<endl;
-//        for(neighborsAndCost c: m.getTopolgy(i).neighbors)
-//        {
-//            cout<<"Neighbor:: "<<c.neighbor<<" "<<"Cost::  " <<c.cost<<" Port:: "<<c.portNumber<<endl;
-//        }
-//
-//    }
-    return 0;
 }
 

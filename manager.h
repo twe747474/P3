@@ -35,8 +35,17 @@ class manager
     vector<routesAndNeighbors> topology;
     vector<int> readyRouters;
     vector<std::string> packetInstructions;
-
+    int completedDijkStra = 0;
 public:
+    int getDijkstra()
+    {
+        return completedDijkStra;
+    }
+    void addDijkstra()
+    {
+        completedDijkStra++;
+    }
+
     void pushPackets(std::string test)
     {
         packetInstructions.push_back(test);
@@ -118,7 +127,7 @@ void updateNeighborPorts(int,int , manager &);
 void digestMessage(std::string , int , manager &);
 routesAndNeighbors findNeighbors(int , manager &);
 void giveNeighborHood(int ,std::string, manager & , int);
-int connectToRouter(int);
+int connectToRouter(int,int);
 void routerGoLive(manager &);
 
 #endif //P3_MANAGER_H

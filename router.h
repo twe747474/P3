@@ -185,7 +185,7 @@ public:
     void addAck(int destRouter, int srcRouter, std::string packet)
     {
         std::ofstream myFile = getRecord(getName());
-        myFile<<currentDateTime()<< " adding ack for:: "<<destRouter << " src:: "<< srcRouter << " packet:;  " << packet<<std::endl;
+        //myFile<<currentDateTime()<< " adding ack for:: "<<destRouter << " src:: "<< srcRouter << " packet:;  " << packet<<std::endl;
         aMap[destRouter].push_back(createAck(srcRouter, packet));
     }
     int getAckSize(int k)

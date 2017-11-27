@@ -20,8 +20,7 @@ int sendAll(int sd, std::string packet,std::string fileName)
     int bytesleft = len;
     int n;
     std::ofstream myFile = getRecord(fileName);
-    myFile<< currentDateTime() << " Size of packet "<<len<<endl;
-    myFile<< currentDateTime() << " my packet " <<packet<<endl;
+    myFile<< currentDateTime() << " Packet:: " <<packet<<endl;
     while(total < len)
     {
         n = send(sd, packetTosend+total, bytesleft, 0);
@@ -71,8 +70,7 @@ std::string handleIncomingMessage(int i , std::string fileName)
     }
     else
     {
-        myFile<<currentDateTime()<< " from:: "<<i<<" "<<valread<<" from handle::: "<<endl;
-        myFile<<currentDateTime()<< " " << buffer<<endl;
+
         return  buffer;
     }
     return "";

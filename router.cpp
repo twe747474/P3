@@ -9,7 +9,7 @@
 #include "router.h"
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "Dikjstra.cpp"
+#include "Graph.cpp"
 
 
 using std::endl;
@@ -22,7 +22,7 @@ void * createRouter(void * portNumber)
     router r;
     r.setName(std::to_string((*(int*)portNumber)));
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<currentDateTime() << " routerCreated "<<*(int*)portNumber<<std::endl;
+    myFile<<currentDateTime() << " Router created and tcp connection to manager at:: "<<*(int*)portNumber<<std::endl;
     createUDP(*(int*)portNumber , r);
     createConnection(*(int*)portNumber , r);
     myFile.flush();
@@ -31,17 +31,17 @@ void * createRouter(void * portNumber)
 void createUDP(int portNumber , router &r)
 {
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<currentDateTime() << " Creating udp "<<endl;
-    int udpPort = portNumber + 100;
+    int udpPort = portNumber + 1000;
+    myFile<<currentDateTime() << " Creating udp at "<<udpPort<<endl;
     r.setUDP(udpPort);
     struct sockaddr_in myaddr;      /* our address */
     struct sockaddr_in remaddr;     /* remote address */
     socklen_t addrlen = sizeof(remaddr);/* length of addresses */
     int fd;                         /* our socket */
     /* create a UDP socket */
-    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
         perror("cannot create socket\n");
-
     }
     struct timeval tv;
     tv.tv_sec = 1;
@@ -63,7 +63,7 @@ void createUDP(int portNumber , router &r)
     }
 
     r.setSocket(fd);
-    myFile<< currentDateTime() << " UDP created PortNumber: "<<udpPort<<"Socket:: "<<fd<<endl;
+    myFile<< currentDateTime() << " UDP created PortNumber: "<<udpPort<<" Socket:: "<<fd<<endl;
     myFile.flush();
     //close(sock);
 }
@@ -119,7 +119,7 @@ void createConnection(int portNumber , router &r)
     while((clientSocketNumber=accept(socketfd, (struct sockaddr *) &address, &addr_size)))
     {
        if(clientSocketNumber == -1){
-           myFile<<"Client failed "<<strerror(errno)<<endl;
+           myFile<<currentDateTime()<<" Client failed "<<strerror(errno)<<endl;
        }
         myFile<< currentDateTime() << " Connected to manager" <<std::endl;
         //usleep(1000*100);
@@ -144,8 +144,8 @@ void digestMessage(std::string message, router &r , int sd)
     //neighborhood is coming in.
     if(brokePacket.at(0) == "1")
     {
+        myFile<<currentDateTime()<<" Got a lsp packet from manager "<<endl;
         myFile<< currentDateTime() << " Packet:: "<<message<<endl;
-        myFile<<currentDateTime()<<"Got a lsp packet our manager "<<endl;
         brokePacket.erase(brokePacket.begin() + 0);
         r.setHome(brokePacket.at(0));
         brokePacket.erase(brokePacket.begin()+0);
@@ -162,9 +162,11 @@ void digestMessage(std::string message, router &r , int sd)
             n.cost = stoi(brokeUp.at(2));
             r.addNeighbor(n);
         }
-        std::string message = "3|ready|" +r.getHome();
+        std::string message = "3|signed|" +r.getHome();
         //allows manager to know they got the data.
+        myFile << currentDateTime() << " Sending packet to manager" << endl;
         sendAll(sd , message , r.getName());
+        myFile<<currentDateTime()<<" My neighbors for router:: "<<r.getHome()<<endl;
         for(neighbor n:r.getNeighbor())
         {
 
@@ -176,13 +178,14 @@ void digestMessage(std::string message, router &r , int sd)
         }
         //wait for next step from manager.
         r.setFowardingPacket(createFowardingPacket(r));
+        myFile <<currentDateTime() << " Waiting for go live from manager" << endl;
         Wait(sd,r);
     }
     //go live message from router.
     else if(brokePacket.at(0) == "2")
     {
-        myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         myFile<<currentDateTime()<<" Got a go live message from manager "<<endl;
+        myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         string message ="3|Signed|"+r.getHome();
         sendAll(sd , message, r.getName());
         floodNetwork(r.getFowardingPacket() , r , stoi(r.getHome()));
@@ -191,8 +194,8 @@ void digestMessage(std::string message, router &r , int sd)
      //ack 4%ack%fromWho%inRegards
     else if(brokePacket.at(0) == "4")
     {
-        myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         myFile<<currentDateTime()<<" Got an ack from "<<brokePacket.at(1) <<" in regards to "<<brokePacket.at(2)<<endl;
+        myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         updateAck(brokePacket.at(1) , brokePacket.at(2), r);
     }
 
@@ -201,20 +204,22 @@ void digestMessage(std::string message, router &r , int sd)
     else if(brokePacket.at(0) == "5" && !r.getGoAhead())
     {
         //src of packet packet...
+        myFile<<currentDateTime()<<" Packet from router:: "<<brokePacket.at(1)<<endl;
         myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         brokePacket.erase(brokePacket.begin() + 0);
         int src = stoi(brokePacket.at(0));
-        myFile<<currentDateTime()<<" Parsing from:::: "<<src<<endl;
+        myFile<<currentDateTime()<<" Parsing from router:::: "<<src<<endl;
+        myFile<<currentDateTime()<<" Sending ack to router:: "<<src<<endl;
         sendDataGram(r.getNeighBorsPort(src) , createAckPack(src , r), r);
         if(parseAndAdd(brokePacket, r , brokePacket.at(0)))
         {
             std::string newMessage = "6%" + r.getHome() + "%" + message.substr(2, message.size());
-            myFile << " Fwd to neighbors " << newMessage << endl;
+            myFile<<currentDateTime() << " Fwd to neighbors " << newMessage << endl;
             floodNetwork(newMessage, r, src );
         }
         else
         {
-            myFile<<" Resent ACK to " <<src<<endl;
+            myFile<<currentDateTime()<<" Resent ACK to " <<src<<endl;
         }
 
 
@@ -222,15 +227,16 @@ void digestMessage(std::string message, router &r , int sd)
         //6%thisRouter%
     else if(brokePacket.at(0) == "6" && !r.getGoAhead())
     {
+        myFile<<currentDateTime()<<" Packet from router::"<<brokePacket.at(1)<<endl;
         myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         vector<string> newBrokePacket(brokePacket.begin()+1, brokePacket.end());
         int neighbor  = stoi(newBrokePacket.at(0));
         int src = stoi(newBrokePacket.at(1));
-        myFile<<currentDateTime()<<" Sending ack to " << neighbor <<endl;
+        myFile<<currentDateTime()<<" Sending ack to routers " << neighbor <<endl;
         sendDataGram(r.getNeighBorsPort(neighbor), createAckPack(src, r), r);
         if(neighbor != stoi(r.getHome()))
         {
-            myFile << currentDateTime() << " got a packet from " << src << "forwarding packet to neighbors" << endl;
+            myFile << currentDateTime() << " Received a packet from " << src << "forwarding packet to neighbors" << endl;
             string newMessage = "6%" + r.getHome()  +"%" + message.substr(4,message.size());
             if (parseAndAdd(newBrokePacket, r , newBrokePacket.at(1))) {
                 //if you break shit look here
@@ -246,8 +252,7 @@ void digestMessage(std::string message, router &r , int sd)
         //7%Go
     else if(brokePacket.at(0) == "7")
     {
-        myFile<< currentDateTime() << " Packet:: "<<message<<endl;
-        myFile<<currentDateTime()<<" Got go ahead from manager  "<<endl;
+        myFile<<currentDateTime()<<" Received go ahead from manager  Packet:: "<<message<<endl;
         r.setGoAhead();
         myFile<<currentDateTime()<<" Creating fwd table...."<<endl;
         createFwdTable(r);
@@ -256,11 +261,13 @@ void digestMessage(std::string message, router &r , int sd)
         //packet intial packer from manager
     else if(brokePacket.at(0) == "8")
     {
-        myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         myFile<<currentDateTime()<<" Received initial forwarding packet from manager..."<<endl;
+        myFile<< currentDateTime() << " Packet:: "<<message<< endl;
+        myFile<< currentDateTime() << " Message from manager destined for " << brokePacket.at(2) << endl;
         if(brokePacket.at(2) == r.getHome())
         {   //this alerts manager that packet has been sent.
             myFile<<currentDateTime()<<" Packet made it! Received packet from:: "<<brokePacket.at(1)<<endl;
+            myFile<<currentDateTime()<<"Sending to manager"<<endl;
             sendAll(r.getTCPsocket(),"4|"+r.getHome() ,r.getName()) ;
         }
         else
@@ -275,18 +282,20 @@ void digestMessage(std::string message, router &r , int sd)
             fwdMessage.append(message.substr(2, message.length()));
             fwdMessage.append("%");
             r.addAck(nextStep , stoi(r.getHome()) , fwdMessage);
+            myFile<<currentDateTime()<<" Sending data gram to router::" << nextStep<<endl;
             sendDataGram(r.getNeighBorsPort(nextStep), fwdMessage, r);
         }
 
     }
-    //fwd packet from manager 4%ack%fromWho%inRegards
     else if(brokePacket.at(0) == "9")
     {
+        myFile<<currentDateTime()<<" Packet from router::"<<brokePacket.at(1)<<endl;
         myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         myFile<<currentDateTime()<<": Received a packet from:: "<<brokePacket.at(1)<<endl;
         //r.clearAckTable();
         string ack = "4%" +r.getHome() + "%" +brokePacket.at(1) + "%------------------------------------------";
         //this sends an ack/.
+        myFile<<currentDateTime()<<" Sending ack to router:: "<<brokePacket.at(1)<<endl;
         sendDataGram(r.getNeighBorsPort(stoi(brokePacket.at(1))) , ack,r);
         if(brokePacket.at(3) == r.getHome())
         {   //this alerts manager that packet has been sent.
@@ -301,6 +310,7 @@ void digestMessage(std::string message, router &r , int sd)
             myFile<<currentDateTime()<<" fwd to:: "<<nextStep<<endl;
             string fwdMessage = "9%" +r.getHome() +"%"  +message.substr(4,message.size());
             r.addAck(nextStep , stoi(r.getHome()) , fwdMessage);
+            myFile<<currentDateTime()<<" Sending datagram to router:: "<<nextStep<<endl;
             sendDataGram(r.getNeighBorsPort(nextStep) , fwdMessage , r);
 
         }
@@ -310,15 +320,14 @@ void digestMessage(std::string message, router &r , int sd)
         //kill
         myFile<< currentDateTime() << " Packet:: "<<message<<endl;
         myFile<<currentDateTime()<<" Received kill message from manager "<<endl;
-        myFile<<currentDateTime()<<" Cleaning up........";
+        myFile<<currentDateTime()<<" Cleaning up........"<<endl;
         close(r.getUdpSocket());
         close(r.getTCPsocket());
-        myFile<<"Looks like my time is up bye"<<endl;
+        myFile<<currentDateTime()<<" Looks like my time is up bye"<<endl;
         string old = r.getName() +".out";
         string newName = "router"+r.getHome() +".out";
         rename(old.c_str(), newName.c_str());
         pthread_cancel(pthread_self());
-        usleep(100000);
     }
     myFile.flush();
 
@@ -353,7 +362,7 @@ void updateAck(string fromWho , string inRegards, router &r)
     if(routerName != stoi(r.getHome()))
     {
         r.updateAck(routerName, srcRouter);
-        myFile<<currentDateTime()<<" Updating ack in regards::  "<<inRegards << " from :: " << fromWho << endl;
+        //myFile<<currentDateTime()<<" Updating ack in regards::  "<<inRegards << " from :: " << fromWho << endl;
     }
 
 }
@@ -367,18 +376,15 @@ bool parseAndAdd(vector<string> packet, router &r , string src)
         std::vector<string> brokePacket;
         packet.erase(packet.begin() + 0);
         std::ofstream myFile = getRecord(r.getName());
+        myFile <<currentDateTime() << " Parsing and adding to routing table from router:: " << l.src <<endl;
         for (string s:packet) {
             brokePacket.clear();
             brokePacket = splitString(s, '|');
             //address = src
             if(brokePacket.size() >= 3) {
-                if (r.getHome() != brokePacket.at(0)) {
-                    myFile << " Parsing and adding ::  " << endl << "source:: " << l.src
-                           << endl <<
-                           "dest:: " << stoi(brokePacket.at(0)) <<
-                           endl <<
-                           "cost:: " <<
-                           stoi(brokePacket.at(2)) << endl;
+                if (r.getHome() != brokePacket.at(0))
+                {
+                    myFile<<currentDateTime()<<  " Dest:: " << stoi(brokePacket.at(0)) << " Cost:: " << stoi(brokePacket.at(2)) << endl;
                     n.address = l.src;
                     n.port = stoi(brokePacket.at(0));
                     n.cost = stoi(brokePacket.at(2));
@@ -386,7 +392,7 @@ bool parseAndAdd(vector<string> packet, router &r , string src)
                 }
             }
         }
-
+        myFile<<currentDateTime()<<"________________________________"<<endl;
         r.addLSP(l);
         return true;
 
@@ -397,7 +403,7 @@ bool parseAndAdd(vector<string> packet, router &r , string src)
 bool checkTable(std::string src , router &r)
 {
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<currentDateTime()<<" Checking lsp for " << src <<endl;
+    //myFile<<currentDateTime()<<" Checking lsp for " << src <<endl;
     vector<lsp> tmp = r.getLSPlist().lsps;
     for(lsp l : tmp)
     {
@@ -412,10 +418,10 @@ bool checkTable(std::string src , router &r)
     return false;
 
 }
-void sendDataGram(int port, std::string packet, router &r)
+void sendDataGram(int port, std::string packet, router &r  )
 {
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<currentDateTime()<<":::: Sending datagram to:: " <<port<<" "<<packet<<endl;
+    myFile<<currentDateTime()<<" :::: Sending datagram to:: " <<port<<" "<<packet<<endl;
     sockaddr_in servaddr;
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(port);
@@ -442,7 +448,7 @@ string createFowardingPacket(router &r)
     }
 
     std::ofstream myFile = getRecord(r.getName());
-    myFile<<currentDateTime()<<" LSP fwd packet:: "<<packet<<endl;
+    //myFile<<currentDateTime()<<" LSP fwd packet:: "<<packet<<endl;
     return packet;
 }
 void briefAckCheck(router &r)
@@ -495,9 +501,7 @@ void listenMode(router &r)
         }
         else
         {
-            myFile<<currentDateTime()<<" UDP timeout checking acks....."<<endl;
             myFile<<currentDateTime()<<" Number of routers in network:: " <<r.getNumRouters()<<endl;
-            myFile<<currentDateTime()<<" Current LSP table:::: "<<endl;
             if(r.getLSPlist().lsps.size() == r.getNumRouters() -1  && !tcpSent && r.checkAcks())
             {
                 myFile<<currentDateTime()<<" LSP table is full sending ready message to manager "<<endl;
@@ -505,20 +509,17 @@ void listenMode(router &r)
                 sendAll(r.getTCPsocket() , message, r.getName());
                 tcpSent = true;
                 r.tcpTrue();
-                myFile<<currentDateTime()<<" Routing table::"<<endl;
+                myFile<<currentDateTime()<<" Routing table for "<<r.getHome()<<"::"<<endl;
+                myFile<<currentDateTime()<<" _______________________________________________"<<endl;
                 for(lsp l : r.getLSPlist().lsps) {
-                    myFile << " src :: " << l.src << endl;
-                    myFile<<"______________________________________________"<<endl;
+                    myFile <<currentDateTime() << " Router:: " << l.src;
+                    myFile<<" ____________________________________________"<<endl;
                     for(neighbor n : l.neighbors){
-                        myFile<< "Address : " << n.port<<
-                              " "
-                              <<"cost "
-                              <<n.cost<<endl;
+                        myFile<<currentDateTime()<< " Neighbor's Address is: " << n.port<< " cost  : " <<n.cost <<endl;
                     }
-                    myFile<<"_______________________________________________"<<endl;
+                    myFile<<currentDateTime()<<" _______________________________________________"<<endl;
                 }
             }
-            myFile<< currentDateTime()<<" checking ack table......"<<endl;
             if(r.checkAcks())
             {
                 forwardFlood(r);
@@ -556,7 +557,6 @@ void Wait(int sd, router &r)
     int valread;
     char buffer[1024];
     memset(buffer,0,1024);
-    std::ofstream myFile = getRecord(r.getName());
 
     while((valread = recv(sd,buffer,1024,0)) == -1)
     {
@@ -599,12 +599,15 @@ void createFwdTable(router &r) {
 
     map<int,int> fwdTable;
     fwdTable = r.getFwdTable();
-    myFile<<currentDateTime()<<" Fowarding table::::" <<endl;
-    myFile<<"_______________________________________________________"<<endl;
+    int* distTable;
+    distTable = g.getDistTable();
+    myFile<<currentDateTime()<<" Forwarding table::::" <<endl;
+    myFile<< currentDateTime()<<" Destination\tNeighbor\tTotal Cost\t"<<endl;
     for(auto it : fwdTable){
-            myFile << (it).first << ":" << (it).second <<endl; //dest, neighbor
+
+            myFile << currentDateTime() + " \t"<< (it).first << "\t\t\t" <<  (it).second<< "\t\t\t" <<  distTable[(it).first]<<endl; //dest, cost, neighbor
     }
-    myFile<<"_______________________________________________________"<<endl;
+    myFile<<currentDateTime()<<" _______________________________________________________"<<endl;
     updateFwdTable(fwdTable, r);
 }
 
