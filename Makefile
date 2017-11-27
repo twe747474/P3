@@ -4,19 +4,16 @@
 #
 #--------------------------------
 CC = g++
-CFLAGS  = -pthread -std=c++14 -Wall -Wextra -Wpedantic -Werror -o
+CFLAGS  = -pthread -o
 
 default: all
-
-all: manager router
+all: manager
  	  
 	
 manager: manager.cpp 
-	$(CC) $(CFLAGS) manager manager.cc
- 	  
-router: router.cpp
-	$(CC) -pthread $(CFLAGS) router router.cc
+	$(CC) $(CFLAGS) manager manager.cpp router.cpp sharedFunctions.cpp 
+
 	
 clean: 
-	rm manager router *.out
+	rm manager *.out
  
