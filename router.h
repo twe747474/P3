@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <vector>
 #include <map>
+#include "sharedFunctions.h"
 #ifndef P3_ROUTER_H
 #define P3_ROUTER_H
 
@@ -40,6 +41,7 @@ class router{
     int managerTCP;
     bool tcpSent = false;
     lsp lspacket;
+    bool goAhead = false;
     struct lspList
     {
         std::vector<struct lsp> lsps;
@@ -57,12 +59,22 @@ class router{
 
 
 
-
+//below are setter and getters of the class router.
 public:
+    void setGoAhead()
+    {
+        goAhead = true;
+    }
+
     void tcpTrue()
     {
         tcpSent = true;
     }
+    bool getGoAhead()
+    {
+        return  goAhead;
+    }
+
     bool getTCPStatus()
     {
         return tcpSent;
@@ -98,10 +110,6 @@ public:
     void setUDP(int r)
     {
         udpPort = r ;
-    }
-    int getManagerConnection()
-    {
-        return managerTCP;
     }
     int getTCPsocket()
     {
@@ -153,7 +161,7 @@ public:
     {
         return fwdTable;
     }
-    void addLSP(struct lsp &tmp)
+    void addLSP(struct lsp tmp)
     {
         lspackets.lsps.push_back(tmp);
     }
@@ -161,14 +169,7 @@ public:
     {
         return lspackets;
     }
-    void setLSP(struct lsp &tmp)
-    {
-        lspacket = tmp;
-    }
-    struct lsp getLSP()
-    {
-        return lspacket;
-    }
+
     int getNeighBorsPort(int adddres)
     {
         for(neighbor n : myNeighbors)
@@ -183,7 +184,8 @@ public:
     }
     void addAck(int destRouter, int srcRouter, std::string packet)
     {
-
+        std::ofstream myFile = getRecord(getName());
+        myFile<<currentDateTime()<< " adding ack for:: "<<destRouter << " src:: "<< srcRouter << " packet:;  " << packet<<std::endl;
         aMap[destRouter].push_back(createAck(srcRouter, packet));
     }
     int getAckSize(int k)
@@ -193,6 +195,21 @@ public:
     ackSet getAck(int k)
     {
       return  aMap.at(k);
+    }
+    bool checkAcks()
+    {
+        for(neighbor n : myNeighbors)
+        {
+            for(ack k :aMap.at(n.address))
+            {
+             if(k.received == false)
+             {
+                 return false;
+             }
+            }
+        }
+        return true;
+
     }
     void updateAck(int router, int src)
     {
@@ -206,10 +223,11 @@ public:
             }
         }
         if(!updated){
-            std::cerr << "Something went wrong! \nrouter: " << router << " was not found in src: " << src << std::endl;
+            std::cerr << "Something went wrong! \nrouter: " << router << " was not found in src: " << src << " in " << home<< std::endl;
             exit(1);
         }
     }
+    //creates an ack structure upon sendign a datagram
     struct ack createAck(int srcRouter, std::string packet){
         ack tmp;
         tmp.srcRouter = srcRouter;
@@ -217,36 +235,43 @@ public:
         tmp.received = false;
         return tmp;
     }
-    void clearAckTable()
-    {
-        //aMap.clear();
-       for(neighbor n : myNeighbors)
-       {
-           aMap[n.address].clear();
-       }
 
-    }
 };
+//creates the fwd packet 5%home%neighbor%...Neighbor
 std::string createFowardingPacket(router &r);
+//creates an ACK packet 4%from%inRegards
 std::string createAckPack(int  , router & );
-//floods network with given packet.
+//this runs a quick look to see if a tcp message is waiting from the manager. TCP connection is set with a timeout. Timeout very by machine but CS linux machines is what this timeout is set for.
 void checkTCP(router&);
+//this function floods neighbors with given a UDP packet, will not send to src or overall original src.
 void floodNetwork(std::string , router &, int , int from = -1);
-//resend all ack==false
+//does a brief Ack check upon sending any udp messages.
 void briefAckCheck(router &);
+//resend all packets in ack table if ack == false
 void fowardFlood(router &);
+//This updates the ack table upon receiving a message.
 void updateAck(std::string, std::string, router&);
+//this function takes a message and a router , and a port number and sends a datagram to the given port number
 void sendDataGram(int, std::string, router &);
-void openAndListen(router &);
+//this is the controller of the entire router. This digest each and every message and calls the correct functions based on the signal.
+//packet format is signal%messages% very large function since we have a total of 10 signals.
 void digestMessage( std::string, router & , int);
+//create connection opens a tcp connection to the rotuer.
 void createConnection(int , router &);
+//create udp opends a udp port.
 void createUDP(int , router &);
+//this function waits for a message from manager.
 void Wait(int, router &);
-void WaitForNeighbors(int , router &);
+//creates a fwd table after performing minimum spanning tree.
 void createFwdTable(router &);
+//this is placed in an infinite loop and does exactly what is says it listens on both udp and tcp connections and then sends the buffer to the digestMessage function
 void listenMode(router &);
+//this a helper function for createFwd table
 void updateFwdTable(std::map<int,int> &, router &);
-bool parseAndAdd(std::vector<std::string>, router &);
+//this parses incomung lsp packet from all other routers and adds it to the table.
+bool parseAndAdd(std::vector<std::string>, router & , std::string);
+//this checks the lsp table to see if we have already got lsp packets from the neighbor if so we do not parse and add rather we just send an ack back.
 bool checkTable(std::string , router &);
+//removes all duplicates from current lsp table
 std::vector<neighbor> removeDuplicates(std::vector<neighbor> routingList);
 #endif //P3_ROUTER_H
