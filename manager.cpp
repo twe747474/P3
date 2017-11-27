@@ -96,6 +96,7 @@ void spawnRouters(int processCount , manager &m)
 {
     int portNumber = 8080;
     pthread_t thread_id;
+    cout<<"Spawning routers.........."<<endl;
     for(int i = 0; i < processCount; i++)
     {
         ++portNumber;
@@ -168,6 +169,7 @@ void intialMultiplex(manager &m)
         int t = 0;
         int n = m.getSockets().at(m.getSockets().size() - 1) + 1;
         fd_set temp;
+        FD_ZERO(&temp);
         for (int i : m.getSockets()) {
             FD_SET(i, &temp);
             int multiplexed = select(n, &temp, NULL, NULL, &tv);
@@ -197,6 +199,7 @@ void multiplex1(manager &m)
     int t = 0;
     int n = m.getSockets().at(m.getSockets().size() - 1) + 1;
     fd_set temp;
+    FD_ZERO(&temp);
     for (int i : m.getSockets()) {
         FD_SET(i, &temp);
         int multiplexed = select(n, &temp, NULL, NULL, &tv);
@@ -209,6 +212,7 @@ void multiplex1(manager &m)
             //  usleep(100 * 1000);
             t++;
             FD_ZERO(&temp);
+
         }
     }
 
@@ -243,7 +247,7 @@ void multiplex1(manager &m)
     void digestMessage(string message , int router , manager &m)
     {
         ofstream myFile = getRecord("manager");
-        myFile<<currentDateTime() << " Digesting message"<<endl;
+        myFile<<currentDateTime() << " Digesting message from router:: "<< message <<endl;
         vector<string> sepMessage = splitString(message , '|');
         if(sepMessage.at(0) == "1")
         {
@@ -256,19 +260,24 @@ void multiplex1(manager &m)
             //ready call from router
         else if(sepMessage.at(0) == "2")
         {
-            myFile<<sepMessage.at(1)<<" Ready message "<<endl;
+            myFile<<currentDateTime()<<sepMessage.at(1)<<" Received ready message "<<endl;
             if(!m.readyRouterExist(stoi(sepMessage.at(1))))
             {
                 m.pushReadyRouter(stoi(sepMessage.at(1)));
             }
             if(m.getReadyRouterSize() == m.getNumberOfRoutes())
             {
-              sendReadyMessage(m);
-              usleep(1000000);
+                usleep(2000000 * m.getNumberOfRoutes());
+                myFile<<currentDateTime()<<" Sending ready message"<<endl;
+                sendReadyMessage(m);
+                usleep(1000000);
                 std::string packet;
                 packet = m.getPackets().at(0);
                 int t = stoi(splitString(packet , '%').at(1));
                 m.getPackets().at(0) = "";
+                cout<<"Sending first instruction........... "<<packet<<endl;
+
+                myFile<<currentDateTime()<<" Sending first instruction:: "<< packet<<endl;
                 sendAll(m.getSockets().at(t) , packet , "manager");
             }
 
@@ -283,7 +292,8 @@ void multiplex1(manager &m)
             //completed route packet fwd.
         else if(sepMessage.at(0) == "4")
         {
-            myFile<<currentDateTime()<<"Routers finished  route:: "<<endl;
+            myFile<<currentDateTime()<<" Routers finished  route:: "<<endl;
+            usleep(1000000);
             potentialKill(m);
 
 
@@ -309,7 +319,10 @@ void multiplex1(manager &m)
                     std::vector<string> s = splitString(tk,'%');
                     int t = stoi(s.at(1));
                  //   string instruction = s.at(0) + "%" + s.at(1) +"%" +s.at(2);
+                    cout<<"Sending next instruction"<<endl;
+                    myFile<<currentDateTime()<< " Sending next instruction "<<endl;
                     sendAll(m.getSockets().at(t) , tk , "manager");
+                    usleep(1000000);
 //                    m.getPackets().erase(m.getPackets().begin() + 0);
                     tk = "";
                     complete = true;
@@ -318,16 +331,17 @@ void multiplex1(manager &m)
             }
             if(!complete)
             {
+                myFile<<currentDateTime()<<" Sending kill message "<<endl;
                 for(int i : m.getSockets())
                 {
                     sendAll(i , "0%Kill" , "manager");
                 }
-                usleep (5000000 * 10);
+                usleep (1000000 * m.getNumberOfRoutes());
                 for(int i : m.getSockets())
                 {
                     close(i);
                 }
-                myFile<<"Complete "<<endl;
+                myFile<<currentDateTime()<<" Complete "<<endl;
                 std::cout<<"==================================================>"<<endl;
                 cout<<"Finished"<<endl;
                 exit(0);
