@@ -12,8 +12,10 @@ Resources:
 Makefile
 
 To make the file run make all. This will compile and create one executable. This one excitable is all you need in order to run the file. 
-In order to run this program place run make all. This will create an executable called a.out. Run ./a.out file path to your routerFile.txt. Below is an explanation on what the routerFile.txt is. 
-We ports 8081 and above. Example if you are simulating 10 routers you will have a tcp connection on ports 150000 and above. Upon running the program you see a console output that reads “Simulating…..” followed by multiple progress bars. A successfully completed program output will look like this:
+In order to run this program place run make all. This will create an executable called manager.
+Run manager file path to your routerFile.txt. Below is an explanation on what the routerFile.txt is. 
+example:: manager routerFile.txt 
+We ports 15000 and above. Example if you are simulating 10 routers you will have a tcp connection on ports 150000 and above. Upon running the program you see a console output that reads “Simulating…..” followed by multiple progress bars. A successfully completed program output will look like this:
 
 Simulating....
 ==========>
@@ -115,7 +117,7 @@ Known bugs:
 1.) We tested this on the CS machines. When switching from a macbook to a CS machines timing between each process was off causing the program to fail. This will not happened if tested on a CS linux machine.
 2.)This program runs on port number 15000 - 15000+n-1 and 16000 +n-1 - 1(6+n-1)000+ n-1. If these ports are not empty the program will fail. 
 3.)A bug that fixed but may appear is receiving old message from the UDP once forwarding of the instruction packet begins. Program will complete but it does make output difficult to read. This bug should be fixed. 
-
+4.)We do a renaming of files at the end of router for readability purposes. If the directory is open when running the program you may see weird file naming. To fix this just go out of directory and back in and the files will be named correctly. 
 This project took well over 60 hours it’s still not perfect but it works. 
 
 ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
