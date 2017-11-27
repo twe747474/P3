@@ -18,7 +18,15 @@ We ports 8081 and above. Example if you are simulating 10 routers you will have 
 Simulating....
 ==========>
 =====================>
+Spawning routers..........
 ===================================>
+Sending first instruction........... 8%0%4
+Sending next instruction
+Sending next instruction
+Sending next instruction
+Sending next instruction
+Sending next instruction
+Sending next instruction
 ==================================================>
 Finished
 
@@ -71,7 +79,35 @@ The program is designed to be a simulation of Link State Routing protocol. On st
 
 ——————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 Sample .out files:::
-
+this is the end of the routerfiles.
+router.out::
+2017-11-26.22:27:17 Creating fwd table....
+2017-11-26.22:27:17 Forwarding table::::
+2017-11-26.22:27:17 Destination	Neighbor	Total Cost	
+2017-11-26.22:27:17 	0			1			14
+2017-11-26.22:27:17 	1			2			10
+2017-11-26.22:27:17 	2			8			2
+2017-11-26.22:27:17 	3			2			9
+2017-11-26.22:27:17 	4			5			16
+2017-11-26.22:27:17 	5			2			6
+2017-11-26.22:27:17 	6			8			6
+2017-11-26.22:27:17 	7			8			7
+2017-11-26.22:27:17 _______________________________________________________
+2017-11-26.22:27:17 Packet:: 5|8
+2017-11-26.22:27:17 Size sent 3
+2017-11-26.22:27:53 Received initial forwarding packet from manager...
+2017-11-26.22:27:53 Packet:: 8%8%4
+2017-11-26.22:27:53 Message from manager destined for 4
+2017-11-26.22:27:53 Checking fwd table..... 
+2017-11-26.22:27:53 fwd to:: 2
+2017-11-26.22:27:53 Sending data gram to router::2
+2017-11-26.22:27:53 :::: Sending datagram to:: 16003 9%8%8%4%
+2017-11-26.22:27:53 Got an ack from 2 in regards to 8
+2017-11-26.22:27:53 Packet:: 4%2%8%------------------------------------------
+2017-11-26.22:28:23 Packet:: 0%Kill
+2017-11-26.22:28:23 Received kill message from manager 
+2017-11-26.22:28:23 Cleaning up........
+2017-11-26.22:28:23 Looks like my time is up bye
 
 
 --------------------------------------------------------------------------------------------------------------------------- 
